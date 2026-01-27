@@ -18,4 +18,13 @@ func TestHealthHandler(t *testing.T) {
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", res.StatusCode)
 	}
+
+	if ct := res.Header.Get("Content-Type"); ct != "application/json" {
+		t.Fatalf("expected Content-Type application/json, got %s", ct)
+	}
+
+	body := rec.Body.String()
+	if body != `{"status":"ok"}` {
+		t.Fatalf("unexpected body: %s", body)
+	}
 }

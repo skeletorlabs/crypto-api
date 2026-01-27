@@ -26,6 +26,14 @@ All endpoints are versioned under `/v1`.
 
 Response:
 
+```json
+{
+  "status": "ok"
+}
+```
+
+Status code:
+
 ```
 200 OK
 ```
