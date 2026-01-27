@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"crypto-api/internal/cache"
 	"crypto-api/internal/httpx"
@@ -25,6 +26,11 @@ func main() {
 	mux.Handle("/v1/", http.StripPrefix("/v1", v1))
 
 	handler := middleware.Logging(mux)
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
 	log.Println("Server running on :8080")
 	log.Fatal(http.ListenAndServe(":8080", handler))
