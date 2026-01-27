@@ -1,0 +1,31 @@
+package main
+
+import (
+	"log"
+	"net/http"
+
+	"crypto-api/internal/cache"
+	"crypto-api/internal/httpx"
+	"crypto-api/internal/middleware"
+)
+
+func main() {
+	mux := http.NewServeMux()
+	priceCache := cache.NewMemoryCache()
+	chainsCache := cache.NewMemoryCache()
+	protocolsCache := cache.NewMemoryCache()
+
+	v1 := http.NewServeMux()
+
+	v1.HandleFunc("/health", httpx.HealthHandler)
+	v1.HandleFunc("/price/", httpx.PriceHandler(priceCache))
+	v1.HandleFunc("/chains", httpx.ChainsHandler(chainsCache))
+	v1.HandleFunc("/protocols", httpx.ProtocolsHandler((protocolsCache)))
+
+	mux.Handle("/v1/", http.StripPrefix("/v1", v1))
+
+	handler := middleware.Logging(mux)
+
+	log.Println("Server running on :8080")
+	log.Fatal(http.ListenAndServe(":8080", handler))
+}
