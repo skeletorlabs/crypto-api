@@ -1,6 +1,7 @@
 package sources
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -18,18 +19,26 @@ func GetPriceUSD(symbol string) (float64, error) {
 		symbol,
 	)
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	resp, err := client.Get(url)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return 0, err
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		// retry once
+		resp, err = httpClient.Do(req)
+		if err != nil {
+			return 0, ErrUpstreamTimeout
+		}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("coingecko returned status %d", resp.StatusCode)
+		return 0, ErrUpstreamBadStatus
 	}
 
 	var data CoinGeckoPriceResponse

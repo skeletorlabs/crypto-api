@@ -32,7 +32,8 @@ func PriceHandler(priceCache *cache.MemoryCache) http.HandlerFunc {
 
 		price, err := sources.GetPriceUSD(symbol)
 		if err != nil {
-			JSONError(w, http.StatusBadRequest, err.Error())
+			httpErr := MapError(err)
+			JSONError(w, httpErr.Status, httpErr.Message)
 			return
 		}
 

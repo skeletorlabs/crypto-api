@@ -21,7 +21,8 @@ func ChainsHandler(chainsCache *cache.MemoryCache) http.HandlerFunc {
 
 		chains, err := sources.GetChains()
 		if err != nil {
-			JSONError(w, http.StatusInternalServerError, "failed to fetch chains")
+			httpErr := MapError(err)
+			JSONError(w, httpErr.Status, httpErr.Message)
 			return
 		}
 

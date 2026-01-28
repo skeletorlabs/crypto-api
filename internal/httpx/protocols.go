@@ -25,7 +25,8 @@ func ProtocolsHandler(protocolsCache *cache.MemoryCache) http.HandlerFunc {
 		} else {
 			data, err := sources.GetProtocols()
 			if err != nil {
-				JSONError(w, http.StatusInternalServerError, "failed to fetch protocols")
+				httpErr := MapError(err)
+				JSONError(w, httpErr.Status, httpErr.Message)
 				return
 			}
 

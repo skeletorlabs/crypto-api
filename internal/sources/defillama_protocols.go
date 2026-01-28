@@ -1,8 +1,8 @@
 package sources
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 )
@@ -16,18 +16,26 @@ type DefiLlamaProtocol struct {
 }
 
 func GetProtocols() ([]DefiLlamaProtocol, error) {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	resp, err := client.Get("https://api.llama.fi/protocols")
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.llama.fi/protocols", nil)
 	if err != nil {
 		return nil, err
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		// retry once
+		resp, err = httpClient.Do(req)
+		if err != nil {
+			return nil, ErrUpstreamTimeout
+		}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("defillama returned status %d", resp.StatusCode)
+		return nil, ErrUpstreamBadStatus
 	}
 
 	var protocols []DefiLlamaProtocol

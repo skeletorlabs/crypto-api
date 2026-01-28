@@ -44,3 +44,18 @@ func TestPriceHandler_FromCache(t *testing.T) {
 		t.Fatalf("expected cached=true, got %s", rr.Body.String())
 	}
 }
+
+func TestPriceHandler_UpstreamError(t *testing.T) {
+	c := cache.NewMemoryCache()
+	handler := PriceHandler(c)
+
+	// invalid symbol to trigger upstream error
+	req := httptest.NewRequest(http.MethodGet, "/price/invalidsymbol", nil)
+	rr := httptest.NewRecorder()
+
+	handler(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", rr.Code)
+	}
+}
