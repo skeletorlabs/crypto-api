@@ -15,6 +15,8 @@ func main() {
 	priceCache := cache.NewMemoryCache()
 	chainsCache := cache.NewMemoryCache()
 	protocolsCache := cache.NewMemoryCache()
+	feesCache := cache.NewMemoryCache()
+	networkCache := cache.NewMemoryCache()
 
 	v1 := http.NewServeMux()
 
@@ -22,6 +24,8 @@ func main() {
 	v1.HandleFunc("/price/", httpx.PriceHandler(priceCache))
 	v1.HandleFunc("/chains", httpx.ChainsHandler(chainsCache))
 	v1.HandleFunc("/protocols", httpx.ProtocolsHandler((protocolsCache)))
+	v1.HandleFunc("/bitcoin/fees", httpx.BitcoinFeesHandler(feesCache))
+	v1.HandleFunc("/bitcoin/network", httpx.BitcoinNetworkHandler(networkCache))
 
 	mux.Handle("/v1/", http.StripPrefix("/v1", v1))
 
