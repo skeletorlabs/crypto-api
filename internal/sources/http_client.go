@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
-var httpClient = &http.Client{
+type HTTPDoer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+var httpClient HTTPDoer = &http.Client{
 	Timeout: 10 * time.Second,
 }
