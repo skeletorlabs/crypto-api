@@ -2,6 +2,8 @@
 
 A lightweight crypto data API written in Go, focused on simplicity, performance, and clarity.
 
+The API is read-only and does not require authentication.
+
 This project aggregates crypto-related data (prices, chains, protocols) from external sources and exposes a clean, versioned HTTP API with in-memory caching and test coverage.
 
 Built as part of **Skeletor Labs** to demonstrate backend engineering, API design, and Web3 infrastructure skills.
@@ -87,6 +89,63 @@ Example:
 curl "http://localhost:8080/v1/protocols?chain=Ethereum"
 ```
 
+**Bitcoin Fees**
+
+`GET /v1/bitcoin/fees`
+
+Returns recommended Bitcoin transaction fees based on current mempool conditions.
+
+Example:
+
+```
+curl http://localhost:8080/v1/bitcoin/fees
+```
+
+Response:
+
+```json
+{
+  "fastestFee": 42,
+  "halfHourFee": 28,
+  "hourFee": 18,
+  "cached": false
+}
+```
+
+**Bitcoin Network**
+
+`GET /v1/bitcoin/network`
+
+Returns live Bitcoin network metrics aggregated from mempool.space.
+
+Example:
+
+```
+curl http://localhost:8080/v1/bitcoin/network
+```
+
+Response:
+
+```json
+{
+  "blockHeight": 934140,
+  "hashrateTHs": 848845527.5486102,
+  "difficulty": 141668107417558.2,
+  "avgBlockTimeSeconds": 509.44,
+  "cached": false
+}
+```
+
+Notes:
+
+- Data sourced from **mempool.space**
+- Results are cached in-memory to reduce upstream load
+- Network metrics are aggregated from multiple endpoints:
+  - Block height
+  - Rolling hashrate (TH/s)
+  - Current difficulty
+  - Average block time
+
 ### Project Structure
 
 ```
@@ -106,7 +165,9 @@ curl "http://localhost:8080/v1/protocols?chain=Ethereum"
 
 **Requirements**
 
-- Go 1.21+
+```bash
+Go 1.21+
+```
 
 **Run the server**
 

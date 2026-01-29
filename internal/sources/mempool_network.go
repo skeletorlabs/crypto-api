@@ -26,7 +26,7 @@ type mempoolHashrate struct {
 
 func GetBitcoinNetwork() (
 	blockHeight int64,
-	hashrateEHs float64,
+	hashrateTHs float64,
 	difficulty float64,
 	avgBlockTime float64,
 	err error,
@@ -39,7 +39,7 @@ func GetBitcoinNetwork() (
 		return
 	}
 
-	hashrateEHs, difficulty, err = getBitcoinHashrateEHs(ctx)
+	hashrateTHs, difficulty, err = getBitcoinHashrateTHs(ctx)
 	if err != nil {
 		return
 	}
@@ -90,7 +90,7 @@ func getBitcoinBlockHeight(ctx context.Context) (int64, error) {
 	return height, nil
 }
 
-func getBitcoinHashrateEHs(ctx context.Context) (hashrateEHs float64, difficulty float64, err error) {
+func getBitcoinHashrateTHs(ctx context.Context) (hashrateTHs float64, difficulty float64, err error) {
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -124,7 +124,8 @@ func getBitcoinHashrateEHs(ctx context.Context) (hashrateEHs float64, difficulty
 	}
 
 	last := hrResp.Hashrates[len(hrResp.Hashrates)-1].AvgHashrate
-	hashrateEHs = last / 1e12
+	// last is returned in H/s by mempool.space => convert to TH/s
+	hashrateTHs = last / 1e12
 	difficulty = hrResp.CurrentDifficulty
 
 	return
