@@ -17,6 +17,7 @@ func main() {
 	protocolsCache := cache.NewMemoryCache()
 	feesCache := cache.NewMemoryCache()
 	networkCache := cache.NewMemoryCache()
+	mempoolCache := cache.NewMemoryCache()
 
 	v1 := http.NewServeMux()
 
@@ -26,6 +27,7 @@ func main() {
 	v1.HandleFunc("/protocols", httpx.ProtocolsHandler((protocolsCache)))
 	v1.HandleFunc("/bitcoin/fees", httpx.BitcoinFeesHandler(feesCache))
 	v1.HandleFunc("/bitcoin/network", httpx.BitcoinNetworkHandler(networkCache))
+	v1.HandleFunc("/bitcoin/mempool", httpx.GetBitcoinMempoolHandler(mempoolCache))
 
 	mux.Handle("/v1/", http.StripPrefix("/v1", v1))
 

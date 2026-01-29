@@ -136,6 +136,29 @@ Response:
 }
 ```
 
+**Bitcoin Mempool**
+
+`GET /v1/bitcoin/mempool`
+
+Returns current Bitcoin mempool congestion metrics.
+
+Example:
+
+```
+curl http://localhost:8080/v1/bitcoin/mempool
+```
+
+Response:
+
+```json
+{
+  "count": 31468,
+  "vsize": 15577951,
+  "totalFee": 2587922,
+  "cached": false
+}
+```
+
 Notes:
 
 - Data sourced from **mempool.space**
