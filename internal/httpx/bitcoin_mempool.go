@@ -28,6 +28,10 @@ func GetBitcoinMempoolHandler(c *cache.MemoryCache) http.HandlerFunc {
 		}
 
 		resp := models.BitcoinMempoolResponse{
+			Meta: models.Meta{
+				UpdatedAt: time.Now().UTC(),
+				Cached:    false,
+			},
 			Count:    stats.Count,
 			VSize:    stats.VSize,
 			TotalFee: stats.TotalFee,

@@ -14,11 +14,14 @@ func TestBitcoinNetworkHandler_FromCache(t *testing.T) {
 	c := cache.NewMemoryCache()
 
 	cachedResp := models.BitcoinNetworkResponse{
+		Meta: models.Meta{
+			UpdatedAt: time.Now().UTC(),
+			Cached:    false,
+		},
 		BlockHeight:         100,
 		HashrateTHs:         123.4,
 		Difficulty:          999,
 		AvgBlockTimeSeconds: 600,
-		Cached:              false,
 	}
 
 	c.Set("network", cachedResp, time.Minute)

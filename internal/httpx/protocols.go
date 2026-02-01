@@ -18,10 +18,11 @@ func ProtocolsHandler(protocolsCache *cache.MemoryCache) http.HandlerFunc {
 		chain := r.URL.Query().Get("chain")
 		category := r.URL.Query().Get("category")
 
-		var protocols []models.ProtocolResponse
+		var resp models.StandardResponse[[]models.ProtocolResponse]
 
 		if cached, ok := protocolsCache.Get("all"); ok {
-			protocols = cached.([]models.ProtocolResponse)
+			resp = cached.(models.StandardResponse[[]models.ProtocolResponse])
+			resp.Meta.Cached = true
 		} else {
 			data, err := sources.GetProtocols()
 			if err != nil {
@@ -30,7 +31,7 @@ func ProtocolsHandler(protocolsCache *cache.MemoryCache) http.HandlerFunc {
 				return
 			}
 
-			protocols = make([]models.ProtocolResponse, 0, len(data))
+			protocols := make([]models.ProtocolResponse, 0, len(data))
 			for _, protocol := range data {
 				protocols = append(protocols, models.ProtocolResponse{
 					Name:     protocol.Name,
@@ -41,10 +42,18 @@ func ProtocolsHandler(protocolsCache *cache.MemoryCache) http.HandlerFunc {
 				})
 			}
 
-			protocolsCache.Set("all", protocols, 5*time.Minute)
+			resp = models.StandardResponse[[]models.ProtocolResponse]{
+				Meta: models.Meta{
+					UpdatedAt: time.Now().UTC(),
+					Cached:    false,
+				},
+				Data: protocols,
+			}
+
+			protocolsCache.Set("all", resp, 5*time.Minute)
 		}
 
-		filtered := filters.FilterProtocols(protocols, chain, category)
-		json.NewEncoder(w).Encode(filtered)
+		resp.Data = filters.FilterProtocols(resp.Data, chain, category)
+		json.NewEncoder(w).Encode(resp)
 	}
 }

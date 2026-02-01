@@ -21,11 +21,8 @@ func PriceHandler(priceCache *cache.MemoryCache) http.HandlerFunc {
 		symbol = strings.ToLower(symbol)
 
 		if cached, ok := priceCache.Get(symbol); ok {
-			resp := models.PriceResponse{
-				Symbol: symbol,
-				USD:    cached.(float64),
-				Cached: true,
-			}
+			resp := cached.(models.PriceResponse)
+			resp.Meta.Cached = true
 			json.NewEncoder(w).Encode(resp)
 			return
 		}
@@ -37,13 +34,16 @@ func PriceHandler(priceCache *cache.MemoryCache) http.HandlerFunc {
 			return
 		}
 
-		priceCache.Set(symbol, price, 30*time.Second)
-
 		resp := models.PriceResponse{
+			Meta: models.Meta{
+				UpdatedAt: time.Now().UTC(),
+				Cached:    false,
+			},
 			Symbol: symbol,
 			USD:    price,
-			Cached: false,
 		}
+
+		priceCache.Set(symbol, resp, 30*time.Second)
 		json.NewEncoder(w).Encode(resp)
 	}
 }

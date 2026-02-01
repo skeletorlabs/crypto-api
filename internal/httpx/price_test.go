@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"crypto-api/internal/cache"
+	"crypto-api/internal/models"
 )
 
 func TestPriceHandler_MissingSymbol(t *testing.T) {
@@ -27,7 +28,15 @@ func TestPriceHandler_MissingSymbol(t *testing.T) {
 func TestPriceHandler_FromCache(t *testing.T) {
 	c := cache.NewMemoryCache()
 	const fakePrice = 123.45
-	c.Set("bitcoin", fakePrice, time.Minute)
+
+	c.Set("bitcoin", models.PriceResponse{
+		Meta: models.Meta{
+			UpdatedAt: time.Now().UTC(),
+			Cached:    false,
+		},
+		Symbol: "bitcoin",
+		USD:    fakePrice,
+	}, time.Minute)
 
 	handler := PriceHandler(c)
 

@@ -4,10 +4,13 @@ import (
 	"crypto-api/internal/cache"
 	"crypto-api/internal/models"
 	"crypto-api/internal/sources"
+	"crypto-api/internal/trend"
 	"encoding/json"
 	"net/http"
 	"time"
 )
+
+var bitcoinNetworkTrendBuffer = trend.NewBuffer(20)
 
 func BitcoinNetworkHandler(c *cache.MemoryCache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -28,11 +31,26 @@ func BitcoinNetworkHandler(c *cache.MemoryCache) http.HandlerFunc {
 			return
 		}
 
+		snap := trend.Snapshot{
+			Timestamp:       time.Now().UTC(),
+			AvgBlockTimeSec: avgtime,
+		}
+
+		bitcoinNetworkTrendBuffer.Add(snap)
+		trendLevel := trend.ComputeTrend(
+			bitcoinNetworkTrendBuffer.All(),
+		)
+
 		resp := models.BitcoinNetworkResponse{
+			Meta: models.Meta{
+				UpdatedAt: time.Now().UTC(),
+				Cached:    false,
+			},
 			BlockHeight:         height,
 			HashrateTHs:         hashrate,
 			Difficulty:          difficulty,
 			AvgBlockTimeSeconds: avgtime,
+			Trend:               trendLevel,
 		}
 
 		c.Set("network", resp, 30*time.Second)

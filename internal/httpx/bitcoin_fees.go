@@ -29,10 +29,13 @@ func BitcoinFeesHandler(c *cache.MemoryCache) http.HandlerFunc {
 		}
 
 		resp := models.BitcoinFeesResponse{
+			Meta: models.Meta{
+				UpdatedAt: time.Now().UTC(),
+				Cached:    false,
+			},
 			Low:    fees.HourFee,
 			Medium: fees.HalfHourFee,
 			High:   fees.FastestFee,
-			Cached: false,
 		}
 
 		c.Set("fees", resp, 30*time.Second)

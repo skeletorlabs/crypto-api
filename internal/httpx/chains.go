@@ -15,7 +15,9 @@ func ChainsHandler(chainsCache *cache.MemoryCache) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 
 		if cached, ok := chainsCache.Get("all"); ok {
-			json.NewEncoder(w).Encode(cached)
+			resp := cached.(models.StandardResponse[[]models.ChainResponse])
+			resp.Meta.Cached = true
+			json.NewEncoder(w).Encode(resp)
 			return
 		}
 
@@ -35,7 +37,15 @@ func ChainsHandler(chainsCache *cache.MemoryCache) http.HandlerFunc {
 			})
 		}
 
-		chainsCache.Set("all", response, 5*time.Minute)
-		json.NewEncoder(w).Encode(response)
+		resp := models.StandardResponse[[]models.ChainResponse]{
+			Meta: models.Meta{
+				UpdatedAt: time.Now().UTC(),
+				Cached:    false,
+			},
+			Data: response,
+		}
+
+		chainsCache.Set("all", resp, 5*time.Minute)
+		json.NewEncoder(w).Encode(resp)
 	}
 }
