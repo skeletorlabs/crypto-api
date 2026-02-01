@@ -17,14 +17,37 @@ Built as part of **Skeletor Labs** to demonstrate backend engineering, API desig
 - 🧩 Clean separation of concerns
 - 🔢 API versioning (`/v1`)
 - 🧼 Normalized inputs and outputs
+- 🧾 Standard response metadata (`meta.updatedAt`, `meta.cached`)
 
 ### API Endpoints
 
 All endpoints are versioned under `/v1`.
 
+**Response Metadata**
+<br />Most endpoints return a standard response envelope containing metadata.
+
+```json
+{
+  "meta": {
+    "updatedAt": "2026-01-31T21:14:00Z",
+    "cached": false
+  },
+  "data": { ... }
+}
+```
+
+<hr style="margin: 40px 0;" />
+
 **Health Check**
 
 `GET /v1/health`
+<br />Intentionally excluded from the standard response format.
+
+Example:
+
+```
+curl http://localhost:8080/v1/health
+```
 
 Response:
 
@@ -40,11 +63,15 @@ Status code:
 200 OK
 ```
 
+<hr style="margin: 40px 0;" />
+
 **Token Price**
 
-- `symbol` is case-insensitive
+`GET /v1/price/<token>`
+
+- `token` is case-insensitive, token identifier (eg: bitcoin), not the ticker symbol
 - Internally normalized to lowercase
-- Returned symbol is always lowercase
+- Returned token-name is always lowercase
 
 Example:
 
@@ -56,23 +83,47 @@ Response:
 
 ```json
 {
-  "symbol": "bitcoin",
-  "usd": 87723,
-  "cached": false
+  "meta": {
+    "updatedAt": "2026-01-31T21:14:00Z",
+    "cached": false
+  },
+  "token": "bitcoin",
+  "usd": 87723
 }
 ```
+
+<hr style="margin: 40px 0;" />
 
 **Chains**
 
 `GET /v1/chains`
-
-Returns a list of supported chains with basic metrics.
+<br />Returns a list of supported chains with basic metrics.
 
 Example:
 
 ```
 curl http://localhost:8080/v1/chains
 ```
+
+Response:
+
+```json
+{
+  "meta": {
+    "updatedAt": "2026-01-31T21:14:00Z",
+    "cached": false
+  },
+  "data": [
+    {
+      "name": "Ethereum",
+      "tvl": 123456789,
+      "symbol": "ETH"
+    }
+  ]
+}
+```
+
+<hr style="margin: 40px 0;" />
 
 **Protocols**
 
@@ -89,11 +140,32 @@ Example:
 curl "http://localhost:8080/v1/protocols?chain=Ethereum"
 ```
 
+Response:
+
+```json
+{
+  "meta": {
+    "updatedAt": "2026-01-31T21:14:00Z",
+    "cached": false
+  },
+  "data": [
+    {
+      "name": "Lido",
+      "slug": "lido",
+      "tvl": 123456,
+      "chain": "Ethereum",
+      "category": "Liquid Staking"
+    }
+  ]
+}
+```
+
+<hr style="margin: 40px 0;" />
+
 **Bitcoin Fees**
 
 `GET /v1/bitcoin/fees`
-
-Returns recommended Bitcoin transaction fees based on current mempool conditions.
+<br />Returns recommended Bitcoin transaction fees based on current mempool conditions.
 
 Example:
 
@@ -105,18 +177,22 @@ Response:
 
 ```json
 {
+  "meta": {
+    "updatedAt": "2026-01-31T21:14:00Z",
+    "cached": false
+  },
   "fastestFee": 42,
   "halfHourFee": 28,
-  "hourFee": 18,
-  "cached": false
+  "hourFee": 18
 }
 ```
+
+<hr style="margin: 40px 0;" />
 
 **Bitcoin Network**
 
 `GET /v1/bitcoin/network`
-
-Returns live Bitcoin network metrics aggregated from mempool.space.
+<br />Returns live Bitcoin network metrics aggregated from mempool.space.
 
 Example:
 
@@ -128,19 +204,30 @@ Response:
 
 ```json
 {
+  "meta": {
+    "updatedAt": "2026-01-31T21:14:00Z",
+    "cached": false
+  },
   "blockHeight": 934140,
   "hashrateTHs": 848845527.5486102,
   "difficulty": 141668107417558.2,
   "avgBlockTimeSeconds": 509.44,
-  "cached": false
+  "trend": "Stable"
 }
 ```
+
+`trend` indicates short-term network behavior:
+
+- `Improving`
+- `Stable`
+- `Worsening`
+
+<hr style="margin: 40px 0;" />
 
 **Bitcoin Mempool**
 
 `GET /v1/bitcoin/mempool`
-
-Returns current Bitcoin mempool congestion metrics.
+<br />Returns current Bitcoin mempool congestion metrics.
 
 Example:
 
@@ -152,12 +239,17 @@ Response:
 
 ```json
 {
+  "meta": {
+    "updatedAt": "2026-01-31T21:14:00Z",
+    "cached": false
+  },
   "count": 31468,
   "vsize": 15577951,
-  "totalFee": 2587922,
-  "cached": false
+  "totalFee": 2587922
 }
 ```
+
+<hr style="margin: 40px 0;" />
 
 Notes:
 
@@ -168,6 +260,9 @@ Notes:
   - Rolling hashrate (TH/s)
   - Current difficulty
   - Average block time
+- All responses include standardized metadata for cache state and freshness
+
+<hr style="margin: 40px 0;" />
 
 ### Project Structure
 
@@ -186,13 +281,13 @@ Notes:
 
 ### Running Locally
 
-**Requirements**
+Requirements
 
 ```bash
 Go 1.21+
 ```
 
-**Run the server**
+Run the server
 
 ```
 go run .
@@ -204,6 +299,8 @@ Server will start on:
 http://localhost:8080
 ```
 
+<hr style="margin: 40px 0;" />
+
 ### Running Tests
 
 Run all tests:
@@ -212,6 +309,8 @@ Run all tests:
 go test ./...
 ```
 
+<hr style="margin: 40px 0;" />
+
 ### Design Notes
 
 - Handlers are kept small and focused
@@ -219,6 +318,8 @@ go test ./...
 - Cache keys and API outputs are normalized for consistency
 - API versioning is handled at the routing layer
 - No frameworks, minimal dependencies
+
+<hr style="margin: 40px 0;" />
 
 ### Status
 
@@ -230,6 +331,8 @@ Planned improvements:
 - Deployment (Fly.io or similar)
 - Extended metrics and derived data
 - Optional ticker-to-id mapping for price endpoints
+
+<hr style="margin: 40px 0;" />
 
 ### License
 

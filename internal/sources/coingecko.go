@@ -11,12 +11,12 @@ import (
 
 type CoinGeckoPriceResponse map[string]map[string]float64
 
-func GetPriceUSD(symbol string) (float64, error) {
-	symbol = strings.ToLower(symbol)
+func GetPriceUSD(token string) (float64, error) {
+	token = strings.ToLower(token)
 
 	url := fmt.Sprintf(
 		"https://api.coingecko.com/api/v3/simple/price?ids=%s&vs_currencies=usd",
-		symbol,
+		token,
 	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -46,9 +46,9 @@ func GetPriceUSD(symbol string) (float64, error) {
 		return 0, err
 	}
 
-	price, ok := data[symbol]["usd"]
+	price, ok := data[token]["usd"]
 	if !ok {
-		return 0, fmt.Errorf("price not found for %s", symbol)
+		return 0, fmt.Errorf("price not found for %s", token)
 	}
 
 	return price, nil

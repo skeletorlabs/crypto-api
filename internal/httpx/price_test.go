@@ -11,7 +11,7 @@ import (
 	"crypto-api/internal/models"
 )
 
-func TestPriceHandler_MissingSymbol(t *testing.T) {
+func TestPriceHandler_MissingToken(t *testing.T) {
 	c := cache.NewMemoryCache()
 	handler := PriceHandler(c)
 
@@ -34,8 +34,8 @@ func TestPriceHandler_FromCache(t *testing.T) {
 			UpdatedAt: time.Now().UTC(),
 			Cached:    false,
 		},
-		Symbol: "bitcoin",
-		USD:    fakePrice,
+		Token: "bitcoin",
+		USD:   fakePrice,
 	}, time.Minute)
 
 	handler := PriceHandler(c)
@@ -58,8 +58,8 @@ func TestPriceHandler_UpstreamError(t *testing.T) {
 	c := cache.NewMemoryCache()
 	handler := PriceHandler(c)
 
-	// invalid symbol to trigger upstream error
-	req := httptest.NewRequest(http.MethodGet, "/price/invalidsymbol", nil)
+	// invalid token to trigger upstream error
+	req := httptest.NewRequest(http.MethodGet, "/price/invalidToken", nil)
 	rr := httptest.NewRecorder()
 
 	handler(rr, req)
