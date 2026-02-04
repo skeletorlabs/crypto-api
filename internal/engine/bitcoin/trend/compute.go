@@ -1,6 +1,6 @@
 package trend
 
-func ComputeTrend(snaps []Snapshot) NetworkTrend {
+func ComputeTrend(snaps []Snapshot) Status {
 	if len(snaps) < 2 {
 		return TrendStable
 	}

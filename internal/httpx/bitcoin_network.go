@@ -2,9 +2,10 @@ package httpx
 
 import (
 	"crypto-api/internal/cache"
+	"crypto-api/internal/engine/bitcoin/halving"
+	"crypto-api/internal/engine/bitcoin/trend"
 	"crypto-api/internal/models"
 	"crypto-api/internal/sources"
-	"crypto-api/internal/trend"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -37,9 +38,10 @@ func BitcoinNetworkHandler(c *cache.MemoryCache) http.HandlerFunc {
 		}
 
 		bitcoinNetworkTrendBuffer.Add(snap)
-		trendLevel := trend.ComputeTrend(
+		trendStatus := trend.ComputeTrend(
 			bitcoinNetworkTrendBuffer.All(),
 		)
+		halvingState := halving.Compute(int(height), avgtime/60)
 
 		resp := models.BitcoinNetworkResponse{
 			Meta: models.Meta{
@@ -50,7 +52,8 @@ func BitcoinNetworkHandler(c *cache.MemoryCache) http.HandlerFunc {
 			HashrateTHs:         hashrate,
 			Difficulty:          difficulty,
 			AvgBlockTimeSeconds: avgtime,
-			Trend:               trendLevel,
+			Trend:               trendStatus,
+			Halving:             halvingState,
 		}
 
 		c.Set("network", resp, 30*time.Second)
