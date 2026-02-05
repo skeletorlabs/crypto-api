@@ -192,7 +192,7 @@ Response:
 **Bitcoin Network**
 
 `GET /v1/bitcoin/network`
-<br />Returns live Bitcoin network metrics aggregated from mempool.space.
+<br />Returns live Bitcoin network metrics and derived intelligence (Trend & Halving state).
 
 Example:
 
@@ -205,14 +205,21 @@ Response:
 ```json
 {
   "meta": {
-    "updatedAt": "2026-01-31T21:14:00Z",
+    "updatedAt": "2026-02-04T23:40:21Z",
     "cached": false
   },
-  "blockHeight": 934140,
-  "hashrateTHs": 848845527.5486102,
+  "blockHeight": 935051,
+  "hashrateTHs": 920496599.65,
   "difficulty": 141668107417558.2,
-  "avgBlockTimeSeconds": 509.44,
-  "trend": "Stable"
+  "avgBlockTimeSeconds": 719.77,
+  "trend": "Stable",
+  "halving": {
+    "currentBlock": 935051,
+    "nextHalvingBlock": 1050000,
+    "blocksRemaining": 114949,
+    "progressPercent": 45.26,
+    "estimatedDate": "2028-09-19T14:22:21Z"
+  }
 }
 ```
 
@@ -267,16 +274,15 @@ Notes:
 ### Project Structure
 
 ```
-.
 ├── internal
 │   ├── cache        # In-memory cache implementation
+│   ├── engine       # Domain-specific logic (Halving, Trend calculations)
+│   │   └── bitcoin
 │   ├── filters      # Domain-level filtering logic
 │   ├── httpx        # HTTP handlers
 │   ├── middleware   # HTTP middleware
 │   ├── models       # API response models
 │   └── sources      # External data sources
-├── main.go
-└── README.md
 ```
 
 ### Running Locally
@@ -309,6 +315,13 @@ Run all tests:
 go test ./...
 ```
 
+Run tests with **gotestsum**:
+
+```bash
+# Run tests with professional formatting (requires gotestsum)
+gotestsum --format pkgname-and-test-fails
+```
+
 <hr style="margin: 40px 0;" />
 
 ### Design Notes
@@ -318,6 +331,8 @@ go test ./...
 - Cache keys and API outputs are normalized for consistency
 - API versioning is handled at the routing layer
 - No frameworks, minimal dependencies
+- **Domain-Driven Engines**: Complex business logic (like Halving projections and Trend analysis) is isolated in `internal/engine`. This keeps handlers slim and makes the core logic easily testable without HTTP concerns.
+- **Stateful Trends**: Network trends are computed using a sliding window buffer, allowing the API to detect sentiment changes rather than just showing raw snapshots.
 
 <hr style="margin: 40px 0;" />
 
@@ -325,12 +340,12 @@ go test ./...
 
 This project is actively used as an internal data layer and technical showcase.
 
-Planned improvements:
+**Planned improvements:**
 
-- Docker support
-- Deployment (Fly.io or similar)
-- Extended metrics and derived data
-- Optional ticker-to-id mapping for price endpoints
+- [x] Deployment (Render)
+- [x] Derived data (Bitcoin Halving & Network Trends)
+- [ ] Docker support
+- [ ] Optional ticker-to-id mapping for price endpoints
 
 <hr style="margin: 40px 0;" />
 
