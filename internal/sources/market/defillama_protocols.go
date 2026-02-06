@@ -1,7 +1,8 @@
-package sources
+package market
 
 import (
 	"context"
+	"crypto-api/internal/sources"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -15,7 +16,7 @@ type DefiLlamaProtocol struct {
 	Category string  `json:"category"`
 }
 
-func GetProtocols() ([]DefiLlamaProtocol, error) {
+func GetProtocols(ctx context.Context) ([]DefiLlamaProtocol, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -24,18 +25,18 @@ func GetProtocols() ([]DefiLlamaProtocol, error) {
 		return nil, err
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := sources.HttpClient.Do(req)
 	if err != nil {
 		// retry once
-		resp, err = httpClient.Do(req)
+		resp, err = sources.HttpClient.Do(req)
 		if err != nil {
-			return nil, ErrUpstreamTimeout
+			return nil, sources.ErrUpstreamTimeout
 		}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, ErrUpstreamBadStatus
+		return nil, sources.ErrUpstreamBadStatus
 	}
 
 	var protocols []DefiLlamaProtocol

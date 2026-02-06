@@ -1,7 +1,8 @@
-package sources
+package market
 
 import (
 	"context"
+	"crypto-api/internal/sources"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 
 type CoinGeckoPriceResponse map[string]map[string]float64
 
-func GetPriceUSD(token string) (float64, error) {
+func GetPriceUSD(ctx context.Context, token string) (float64, error) {
 	token = strings.ToLower(token)
 
 	url := fmt.Sprintf(
@@ -19,7 +20,7 @@ func GetPriceUSD(token string) (float64, error) {
 		token,
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -27,18 +28,18 @@ func GetPriceUSD(token string) (float64, error) {
 		return 0, err
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := sources.HttpClient.Do(req)
 	if err != nil {
 		// retry once
-		resp, err = httpClient.Do(req)
+		resp, err = sources.HttpClient.Do(req)
 		if err != nil {
-			return 0, ErrUpstreamTimeout
+			return 0, sources.ErrUpstreamTimeout
 		}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, ErrUpstreamBadStatus
+		return 0, sources.ErrUpstreamBadStatus
 	}
 
 	var data CoinGeckoPriceResponse

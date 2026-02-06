@@ -5,7 +5,7 @@ import (
 	"crypto-api/internal/engine/bitcoin/halving"
 	"crypto-api/internal/engine/bitcoin/trend"
 	"crypto-api/internal/models"
-	"crypto-api/internal/sources"
+	"crypto-api/internal/sources/bitcoin"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -24,7 +24,7 @@ func BitcoinNetworkHandler(c *cache.MemoryCache) http.HandlerFunc {
 			return
 		}
 
-		height, hashrate, difficulty, avgtime, err := sources.GetBitcoinNetwork()
+		height, hashrate, difficulty, avgtime, err := bitcoin.GetBitcoinNetwork()
 
 		if err != nil {
 			httpErr := MapError((err))

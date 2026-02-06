@@ -7,7 +7,7 @@ import (
 
 	"crypto-api/internal/cache"
 	"crypto-api/internal/models"
-	"crypto-api/internal/sources"
+	"crypto-api/internal/sources/market"
 )
 
 func ChainsHandler(chainsCache *cache.MemoryCache) http.HandlerFunc {
@@ -21,7 +21,8 @@ func ChainsHandler(chainsCache *cache.MemoryCache) http.HandlerFunc {
 			return
 		}
 
-		chains, err := sources.GetChains()
+		ctx := r.Context()
+		chains, err := market.GetChains(ctx)
 		if err != nil {
 			httpErr := MapError(err)
 			JSONError(w, httpErr.Status, httpErr.Message)

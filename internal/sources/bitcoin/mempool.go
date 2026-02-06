@@ -1,7 +1,8 @@
-package sources
+package bitcoin
 
 import (
 	"context"
+	"crypto-api/internal/sources"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -19,7 +20,7 @@ type MempoolStats struct {
 	TotalFee int `json:"total_fee"`
 }
 
-func GetBitcoinFees() (*MempoolFees, error) {
+func GetBitcoinFees(ctx context.Context) (*MempoolFees, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -30,14 +31,14 @@ func GetBitcoinFees() (*MempoolFees, error) {
 		return nil, err
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := sources.HttpClient.Do(req)
 	if err != nil {
-		return nil, ErrUpstreamTimeout
+		return nil, sources.ErrUpstreamTimeout
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, ErrUpstreamBadStatus
+		return nil, sources.ErrUpstreamBadStatus
 	}
 
 	var fees MempoolFees
@@ -48,7 +49,7 @@ func GetBitcoinFees() (*MempoolFees, error) {
 	return &fees, nil
 }
 
-func GetBitcoinMempool() (*MempoolStats, error) {
+func GetBitcoinMempool(ctx context.Context) (*MempoolStats, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -62,14 +63,14 @@ func GetBitcoinMempool() (*MempoolStats, error) {
 		return nil, err
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := sources.HttpClient.Do(req)
 	if err != nil {
-		return nil, ErrUpstreamTimeout
+		return nil, sources.ErrUpstreamTimeout
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, ErrUpstreamBadStatus
+		return nil, sources.ErrUpstreamBadStatus
 	}
 
 	var stats MempoolStats

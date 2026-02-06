@@ -8,7 +8,7 @@ import (
 	"crypto-api/internal/cache"
 	"crypto-api/internal/filters"
 	"crypto-api/internal/models"
-	"crypto-api/internal/sources"
+	"crypto-api/internal/sources/market"
 )
 
 func ProtocolsHandler(protocolsCache *cache.MemoryCache) http.HandlerFunc {
@@ -24,7 +24,8 @@ func ProtocolsHandler(protocolsCache *cache.MemoryCache) http.HandlerFunc {
 			resp = cached.(models.StandardResponse[[]models.ProtocolResponse])
 			resp.Meta.Cached = true
 		} else {
-			data, err := sources.GetProtocols()
+			ctx := r.Context()
+			data, err := market.GetProtocols(ctx)
 			if err != nil {
 				httpErr := MapError(err)
 				JSONError(w, httpErr.Status, httpErr.Message)

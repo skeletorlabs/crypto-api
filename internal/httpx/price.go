@@ -8,7 +8,7 @@ import (
 
 	"crypto-api/internal/cache"
 	"crypto-api/internal/models"
-	"crypto-api/internal/sources"
+	"crypto-api/internal/sources/market"
 )
 
 func PriceHandler(priceCache *cache.MemoryCache) http.HandlerFunc {
@@ -27,7 +27,8 @@ func PriceHandler(priceCache *cache.MemoryCache) http.HandlerFunc {
 			return
 		}
 
-		price, err := sources.GetPriceUSD(token)
+		ctx := r.Context()
+		price, err := market.GetPriceUSD(ctx, token)
 		if err != nil {
 			httpErr := MapError(err)
 			JSONError(w, httpErr.Status, httpErr.Message)
