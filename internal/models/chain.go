@@ -1,7 +1,7 @@
 package models
 
 type ChainsResponse struct {
-	Meta
+	Meta Meta            `json:"meta"`
 	Data []ChainResponse `json:"data"`
 }
 

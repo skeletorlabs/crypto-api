@@ -8,15 +8,7 @@ import (
 	"time"
 )
 
-type DefiLlamaProtocol struct {
-	Name     string  `json:"name"`
-	Slug     string  `json:"slug"`
-	TVL      float64 `json:"tvl"`
-	Chain    string  `json:"chain"`
-	Category string  `json:"category"`
-}
-
-func GetProtocols(ctx context.Context) ([]DefiLlamaProtocol, error) {
+func GetProtocols(ctx context.Context) ([]DefillamaProtocol, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -39,7 +31,7 @@ func GetProtocols(ctx context.Context) ([]DefiLlamaProtocol, error) {
 		return nil, sources.ErrUpstreamBadStatus
 	}
 
-	var protocols []DefiLlamaProtocol
+	var protocols []DefillamaProtocol
 	if err := json.NewDecoder(resp.Body).Decode(&protocols); err != nil {
 		return nil, err
 	}

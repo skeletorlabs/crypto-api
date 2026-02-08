@@ -21,23 +21,27 @@ func NewMemoryCache() *MemoryCache {
 	}
 }
 
-func (c *MemoryCache) Get(key string) (any, bool) {
+func Get[T any](c *MemoryCache, key string) (T, bool) {
 	c.mu.RLock()
-	item, ok := c.items[key]
-	c.mu.RUnlock()
+	defer c.mu.RUnlock()
 
+	item, ok := c.items[key]
 	if !ok || time.Now().After(item.ExpiresAt) {
-		return nil, false
+		var zero T
+		return zero, false
 	}
 
-	return item.Value, true
+	val, ok := item.Value.(T)
+	return val, ok
 }
 
-func (c *MemoryCache) Set(key string, value any, ttl time.Duration) {
+// Eg: cache.Set[models.PriceResponse](marketCache, key, data, ttl)
+func Set[T any](c *MemoryCache, key string, value T, ttl time.Duration) {
 	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.items[key] = Item{
 		Value:     value,
 		ExpiresAt: time.Now().Add(ttl),
 	}
-	c.mu.Unlock()
 }

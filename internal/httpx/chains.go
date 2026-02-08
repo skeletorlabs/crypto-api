@@ -10,14 +10,14 @@ import (
 	"crypto-api/internal/sources/market"
 )
 
-func ChainsHandler(chainsCache *cache.MemoryCache) http.HandlerFunc {
+func ChainsHandler(c *cache.MemoryCache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		cacheKey := cache.KeyMarketChains
 
-		if cached, ok := chainsCache.Get("all"); ok {
-			resp := cached.(models.StandardResponse[[]models.ChainResponse])
-			resp.Meta.Cached = true
-			json.NewEncoder(w).Encode(resp)
+		if cached, ok := cache.Get[models.StandardResponse[[]models.ChainResponse]](c, cacheKey); ok {
+			cached.Meta.Cached = true
+			json.NewEncoder(w).Encode(cached)
 			return
 		}
 
@@ -46,7 +46,7 @@ func ChainsHandler(chainsCache *cache.MemoryCache) http.HandlerFunc {
 			Data: response,
 		}
 
-		chainsCache.Set("all", resp, 5*time.Minute)
+		cache.Set(c, cacheKey, resp, 5*time.Minute)
 		json.NewEncoder(w).Encode(resp)
 	}
 }

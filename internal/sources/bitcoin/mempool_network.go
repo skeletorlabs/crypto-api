@@ -11,6 +11,13 @@ import (
 	"time"
 )
 
+type NetworkRawData struct {
+	BlockHeight  int64
+	HashrateTHs  float64
+	Difficulty   float64
+	AvgBlockTime float64
+}
+
 type mempoolBlock struct {
 	Timestamp int64 `json:"timestamp"`
 }
@@ -25,32 +32,31 @@ type mempoolHashrate struct {
 	CurrentDifficulty float64                `json:"currentDifficulty"`
 }
 
-func GetBitcoinNetwork() (
-	blockHeight int64,
-	hashrateTHs float64,
-	difficulty float64,
-	avgBlockTime float64,
-	err error,
-) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func GetBitcoinNetwork(ctx context.Context) (*NetworkRawData, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	blockHeight, err = getBitcoinBlockHeight(ctx)
+	height, err := getBitcoinBlockHeight(ctx)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	hashrateTHs, difficulty, err = getBitcoinHashrateTHs(ctx)
+	hashrate, difficulty, err := getBitcoinHashrateTHs(ctx)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	avgBlockTime, err = getBitcoinAvgBlockTime(ctx)
+	avgTime, err := getBitcoinAvgBlockTime(ctx)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	return
+	return &NetworkRawData{
+		BlockHeight:  height,
+		HashrateTHs:  hashrate,
+		Difficulty:   difficulty,
+		AvgBlockTime: avgTime,
+	}, nil
 }
 
 func getBitcoinBlockHeight(ctx context.Context) (int64, error) {

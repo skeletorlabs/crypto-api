@@ -12,11 +12,11 @@ import (
 func GetBitcoinMempoolHandler(c *cache.MemoryCache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		cacheKey := cache.KeyBitcoinMempool
 
-		if cached, ok := c.Get("bitcoin:mempool"); ok {
-			resp := cached.(models.BitcoinMempoolResponse)
-			resp.Cached = true
-			json.NewEncoder(w).Encode(resp)
+		if cached, ok := cache.Get[models.BitcoinMempoolResponse](c, cacheKey); ok {
+			cached.Meta.Cached = true
+			json.NewEncoder(w).Encode(cached)
 			return
 		}
 
@@ -38,8 +38,7 @@ func GetBitcoinMempoolHandler(c *cache.MemoryCache) http.HandlerFunc {
 			TotalFee: stats.TotalFee,
 		}
 
-		c.Set("bitcoin:mempool", resp, 30*time.Second)
-
+		cache.Set(c, cacheKey, resp, 30*time.Second)
 		json.NewEncoder(w).Encode(resp)
 	}
 }

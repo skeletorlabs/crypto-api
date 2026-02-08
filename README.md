@@ -10,14 +10,12 @@ Built as part of **Skeletor Labs** to demonstrate backend engineering, API desig
 
 ### Features
 
-- 🚀 Fast HTTP API written in Go
-- 🧠 In-memory caching with TTL
-- 🔁 External data aggregation (e.g. DefiLlama-style sources)
-- 🧪 Unit-tested handlers
-- 🧩 Clean separation of concerns
-- 🔢 API versioning (`/v1`)
-- 🧼 Normalized inputs and outputs
-- 🧾 Standard response metadata (`meta.updatedAt`, `meta.cached`)
+- 🚀 Fast HTTP API: Built with Go's standard library for maximum performance.
+- 🧠 Generic Cache: Type-safe in-memory caching using Go Generics (Get[T]/Set[T]).
+- 📈 Intelligence Engine: Derived metrics including BTC/M2 Valuation and Statistical Correlation.
+- 🧪 Test Driven: High coverage for handlers, engines, and data sources.
+- 🔢 API Versioning: Clean routing under /v1.
+- 🧼 Standardized Responses: Consistent metadata envelope (meta.updatedAt, meta.cached).
 
 ### API Endpoints
 
@@ -192,7 +190,7 @@ Response:
 **Bitcoin Network**
 
 `GET /v1/bitcoin/network`
-<br />Returns live Bitcoin network metrics and derived intelligence (Trend & Halving state).
+<br />Returns live network metrics, including Trend analysis and Halving projections.
 
 Example:
 
@@ -258,16 +256,75 @@ Response:
 
 <hr style="margin: 40px 0;" />
 
+**Bitcoin Valuation**
+
+`GET /v1/bitcoin/valuation`
+<br />Analyzes Bitcoin price relative to global M2 money supply.
+
+Example:
+
+```
+curl http://localhost:8080/v1/bitcoin/valuation
+```
+
+Response:
+
+```json
+{
+  "meta": {
+    "updatedAt": "2026-02-08T10:30:00Z",
+    "cached": false
+  },
+  "btcPrice": 69133,
+  "m2SupplyBillions": 21050.5,
+  "ratio": 3.28,
+  "description": "Bitcoin is trading at 3.28x relative to M2 liquidity..."
+}
+```
+
+<hr style="margin: 40px 0;" />
+
+**Bitcoin Correlation**
+
+`GET /v1/bitcoin/correlation`
+<br />Calculates the Pearson correlation coefficient between BTC and M2 liquidity over a historical window.
+
+Example:
+
+```
+curl http://localhost:8080/v1/bitcoin/correlation
+```
+
+Response:
+
+```json
+{
+  "meta": {
+    "updatedAt": "2026-02-08T10:30:00Z",
+    "cached": true
+  },
+  "coefficient": 0.87,
+  "sampleCount": 730,
+  "startDate": "2024-02-08T00:00:00Z",
+  "endDate": "2026-02-08T00:00:00Z"
+}
+```
+
+<hr style="margin: 40px 0;" />
+
 Notes:
 
-- Data sourced from **mempool.space**
-- Results are cached in-memory to reduce upstream load
+- Data sourced from:
+  - **mempool.space** (Network)
+  - **CoinGecko** (Prices)
+  - **FRED - Federal Reserve Economic Data** (Macro/M2)
+- Results are managed via Type-safe Generic In-memory caching.
 - Network metrics are aggregated from multiple endpoints:
   - Block height
   - Rolling hashrate (TH/s)
   - Current difficulty
   - Average block time
-- All responses include standardized metadata for cache state and freshness
+- Intelligence Layer provides advanced analytics (Valuation & Correlation).
 
 <hr style="margin: 40px 0;" />
 
@@ -278,11 +335,18 @@ Notes:
 │   ├── cache        # In-memory cache implementation
 │   ├── engine       # Domain-specific logic (Halving, Trend calculations)
 │   │   └── bitcoin
+│   │       ├── correlation  # Pearson statistical correlation analysis
+│   │       ├── valuation    # Fair value metrics (M2/BTC ratio)
+│   │       ├── halving      # Scarcity and epoch projections
+│   │       └── trend        # Network behavior and sentiment analysis
 │   ├── filters      # Domain-level filtering logic
 │   ├── httpx        # HTTP handlers
 │   ├── middleware   # HTTP middleware
 │   ├── models       # API response models
-│   └── sources      # External data sources
+│   └── sources      # Upstream providers
+│       ├── macro    # FRED API (M2 Money Supply)
+│       ├── market   # CoinGecko API (Historical & Spot Prices)
+│       └── bitcoin  # Mempool.space API (Fees, Blocks, Mempool)
 ```
 
 ### Running Locally
@@ -305,6 +369,15 @@ Server will start on:
 http://localhost:8080
 ```
 
+### Running with Docker
+
+1. Ensure you have a `.env` file with your `FRED_API_KEY`.
+2. Run using Docker Compose:
+
+```bash
+docker-compose up --build
+```
+
 <hr style="margin: 40px 0;" />
 
 ### Running Tests
@@ -312,7 +385,9 @@ http://localhost:8080
 Run all tests:
 
 ```
+
 go test ./...
+
 ```
 
 Run tests with **gotestsum**:
@@ -332,7 +407,11 @@ gotestsum --format pkgname-and-test-fails
 - API versioning is handled at the routing layer
 - No frameworks, minimal dependencies
 - **Domain-Driven Engines**: Complex business logic (like Halving projections and Trend analysis) is isolated in `internal/engine`. This keeps handlers slim and makes the core logic easily testable without HTTP concerns.
-- **Stateful Trends**: Network trends are computed using a sliding window buffer, allowing the API to detect sentiment changes rather than just showing raw snapshots.
+- **Stateful Trends**: Network trends are computed using a sliding window buffer, allowing - the API to detect sentiment changes rather than just showing raw snapshots.
+- Type Safety: Leverage Go Generics in the cache layer to eliminate manual type assertions and runtime panics.
+- Separation of Concerns: Analytics are decoupled from HTTP concerns via the engine layer, ensuring core logic is easily testable.
+- Resilience: Upstream failures are handled gracefully with cached fallbacks and standardized error codes.
+- **Statistical Analysis**: The correlation engine implements the Pearson Correlation Coefficient to measure the linear relationship between BTC price and M2 supply over a 730-day rolling window.
 
 <hr style="margin: 40px 0;" />
 
@@ -342,10 +421,11 @@ This project is actively used as an internal data layer and technical showcase.
 
 **Planned improvements:**
 
-- [x] Deployment (Render)
-- [x] Derived data (Bitcoin Halving & Network Trends)
-- [ ] Docker support
-- [ ] Optional ticker-to-id mapping for price endpoints
+- [x] Derived data (Halving & Trends)
+- [x] Intelligence Engine (Valuation & Correlation)
+- [x] Type-safe Cache implementation
+- [x] Docker support
+- [ ] Persistence layer for historical snapshots (próximo passo natural?)
 
 <hr style="margin: 40px 0;" />
 

@@ -11,7 +11,7 @@ import (
 	"crypto-api/internal/sources/market"
 )
 
-func PriceHandler(priceCache *cache.MemoryCache) http.HandlerFunc {
+func PriceHandler(c *cache.MemoryCache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := strings.TrimPrefix(r.URL.Path, "/price/")
 		if token == "" {
@@ -19,11 +19,11 @@ func PriceHandler(priceCache *cache.MemoryCache) http.HandlerFunc {
 			return
 		}
 		token = strings.ToLower(token)
+		cacheKey := cache.KeyMarketPrice(token)
 
-		if cached, ok := priceCache.Get(token); ok {
-			resp := cached.(models.PriceResponse)
-			resp.Meta.Cached = true
-			json.NewEncoder(w).Encode(resp)
+		if cached, ok := cache.Get[models.PriceResponse](c, cacheKey); ok {
+			cached.Meta.Cached = true
+			json.NewEncoder(w).Encode(cached)
 			return
 		}
 
@@ -44,7 +44,7 @@ func PriceHandler(priceCache *cache.MemoryCache) http.HandlerFunc {
 			USD:   price,
 		}
 
-		priceCache.Set(token, resp, 30*time.Second)
+		cache.Set(c, cacheKey, resp, 30*time.Second)
 		json.NewEncoder(w).Encode(resp)
 	}
 }

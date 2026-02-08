@@ -10,5 +10,5 @@ type HTTPDoer interface {
 }
 
 var HttpClient HTTPDoer = &http.Client{
-	Timeout: 10 * time.Second,
+	Timeout: 45 * time.Second,
 }

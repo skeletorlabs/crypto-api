@@ -10,8 +10,6 @@ import (
 	"time"
 )
 
-type CoinGeckoPriceResponse map[string]map[string]float64
-
 func GetPriceUSD(ctx context.Context, token string) (float64, error) {
 	token = strings.ToLower(token)
 
@@ -42,7 +40,7 @@ func GetPriceUSD(ctx context.Context, token string) (float64, error) {
 		return 0, sources.ErrUpstreamBadStatus
 	}
 
-	var data CoinGeckoPriceResponse
+	var data CoingeckoPriceResponse
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return 0, err
 	}

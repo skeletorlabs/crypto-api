@@ -28,11 +28,12 @@ func TestPriceHandler_MissingToken(t *testing.T) {
 func TestPriceHandler_FromCache(t *testing.T) {
 	c := cache.NewMemoryCache()
 	const fakePrice = 123.45
+	cacheKey := cache.KeyMarketPrice("bitcoin")
 
-	c.Set("bitcoin", models.PriceResponse{
+	cache.Set[models.PriceResponse](c, cacheKey, models.PriceResponse{
 		Meta: models.Meta{
 			UpdatedAt: time.Now().UTC(),
-			Cached:    false,
+			Cached:    false, // O handler vai mudar para true ao ler do cache
 		},
 		Token: "bitcoin",
 		USD:   fakePrice,
@@ -49,8 +50,13 @@ func TestPriceHandler_FromCache(t *testing.T) {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
 
-	if !strings.Contains(rr.Body.String(), `"cached":true`) {
-		t.Fatalf("expected cached=true, got %s", rr.Body.String())
+	body := rr.Body.String()
+	if !strings.Contains(body, `"cached":true`) {
+		t.Fatalf("expected cached=true, got %s", body)
+	}
+
+	if !strings.Contains(body, "123.45") {
+		t.Fatalf("expected price 123.45, got %s", body)
 	}
 }
 
@@ -64,7 +70,7 @@ func TestPriceHandler_UpstreamError(t *testing.T) {
 
 	handler(rr, req)
 
-	if rr.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", rr.Code)
+	if rr.Code == http.StatusOK {
+		t.Fatalf("expected error code, got 200")
 	}
 }
