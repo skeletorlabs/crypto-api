@@ -1,8 +1,8 @@
 package models
 
 type BitcoinFeesResponse struct {
-	Meta
-	Low    int `json:"low"`
-	Medium int `json:"medium"`
-	High   int `json:"high"`
+	Meta   Meta `json:"meta"`
+	Low    int  `json:"low"`
+	Medium int  `json:"medium"`
+	High   int  `json:"high"`
 }

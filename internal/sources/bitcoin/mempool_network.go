@@ -1,7 +1,8 @@
-package sources
+package bitcoin
 
 import (
 	"context"
+	"crypto-api/internal/sources"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -9,6 +10,13 @@ import (
 	"strings"
 	"time"
 )
+
+type NetworkRawData struct {
+	BlockHeight  int64
+	HashrateTHs  float64
+	Difficulty   float64
+	AvgBlockTime float64
+}
 
 type mempoolBlock struct {
 	Timestamp int64 `json:"timestamp"`
@@ -24,32 +32,31 @@ type mempoolHashrate struct {
 	CurrentDifficulty float64                `json:"currentDifficulty"`
 }
 
-func GetBitcoinNetwork() (
-	blockHeight int64,
-	hashrateTHs float64,
-	difficulty float64,
-	avgBlockTime float64,
-	err error,
-) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func GetBitcoinNetwork(ctx context.Context) (*NetworkRawData, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	blockHeight, err = getBitcoinBlockHeight(ctx)
+	height, err := getBitcoinBlockHeight(ctx)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	hashrateTHs, difficulty, err = getBitcoinHashrateTHs(ctx)
+	hashrate, difficulty, err := getBitcoinHashrateTHs(ctx)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	avgBlockTime, err = getBitcoinAvgBlockTime(ctx)
+	avgTime, err := getBitcoinAvgBlockTime(ctx)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	return
+	return &NetworkRawData{
+		BlockHeight:  height,
+		HashrateTHs:  hashrate,
+		Difficulty:   difficulty,
+		AvgBlockTime: avgTime,
+	}, nil
 }
 
 func getBitcoinBlockHeight(ctx context.Context) (int64, error) {
@@ -63,14 +70,14 @@ func getBitcoinBlockHeight(ctx context.Context) (int64, error) {
 		return 0, err
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := sources.HttpClient.Do(req)
 	if err != nil {
-		return 0, ErrUpstreamTimeout
+		return 0, sources.ErrUpstreamTimeout
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, ErrUpstreamBadStatus
+		return 0, sources.ErrUpstreamBadStatus
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -101,15 +108,15 @@ func getBitcoinHashrateTHs(ctx context.Context) (hashrateTHs float64, difficulty
 		return
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := sources.HttpClient.Do(req)
 	if err != nil {
-		err = ErrUpstreamTimeout
+		err = sources.ErrUpstreamTimeout
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		err = ErrUpstreamBadStatus
+		err = sources.ErrUpstreamBadStatus
 		return
 	}
 
@@ -119,7 +126,7 @@ func getBitcoinHashrateTHs(ctx context.Context) (hashrateTHs float64, difficulty
 	}
 
 	if len(hrResp.Hashrates) == 0 {
-		err = ErrUpstreamBadStatus
+		err = sources.ErrUpstreamBadStatus
 		return
 	}
 
@@ -142,14 +149,14 @@ func getBitcoinAvgBlockTime(ctx context.Context) (float64, error) {
 		return 0, err
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := sources.HttpClient.Do(req)
 	if err != nil {
-		return 0, ErrUpstreamTimeout
+		return 0, sources.ErrUpstreamTimeout
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, ErrUpstreamBadStatus
+		return 0, sources.ErrUpstreamBadStatus
 	}
 
 	var blocks []mempoolBlock
@@ -158,7 +165,7 @@ func getBitcoinAvgBlockTime(ctx context.Context) (float64, error) {
 	}
 
 	if len(blocks) < 2 {
-		return 0, ErrUpstreamBadStatus
+		return 0, sources.ErrUpstreamBadStatus
 	}
 
 	var sum float64

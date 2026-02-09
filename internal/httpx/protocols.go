@@ -8,23 +8,25 @@ import (
 	"crypto-api/internal/cache"
 	"crypto-api/internal/filters"
 	"crypto-api/internal/models"
-	"crypto-api/internal/sources"
+	"crypto-api/internal/sources/market"
 )
 
-func ProtocolsHandler(protocolsCache *cache.MemoryCache) http.HandlerFunc {
+func ProtocolsHandler(c *cache.MemoryCache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		chain := r.URL.Query().Get("chain")
 		category := r.URL.Query().Get("category")
+		cacheKey := cache.KeyMarketProtocols
 
 		var resp models.StandardResponse[[]models.ProtocolResponse]
 
-		if cached, ok := protocolsCache.Get("all"); ok {
-			resp = cached.(models.StandardResponse[[]models.ProtocolResponse])
+		if cached, ok := cache.Get[models.StandardResponse[[]models.ProtocolResponse]](c, cacheKey); ok {
+			resp = cached
 			resp.Meta.Cached = true
 		} else {
-			data, err := sources.GetProtocols()
+			ctx := r.Context()
+			data, err := market.GetProtocols(ctx)
 			if err != nil {
 				httpErr := MapError(err)
 				JSONError(w, httpErr.Status, httpErr.Message)
@@ -50,7 +52,7 @@ func ProtocolsHandler(protocolsCache *cache.MemoryCache) http.HandlerFunc {
 				Data: protocols,
 			}
 
-			protocolsCache.Set("all", resp, 5*time.Minute)
+			cache.Set(c, cacheKey, resp, 5*time.Minute)
 		}
 
 		resp.Data = filters.FilterProtocols(resp.Data, chain, category)

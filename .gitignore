@@ -1,0 +1,18 @@
+.env
+
+# Go Binaries
+crypto-api
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Build folders
+bin/
+dist/
+
+# IDEs
+.vscode/
+.idea/
+*.swp

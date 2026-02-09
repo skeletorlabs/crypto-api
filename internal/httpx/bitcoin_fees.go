@@ -3,7 +3,7 @@ package httpx
 import (
 	"crypto-api/internal/cache"
 	"crypto-api/internal/models"
-	"crypto-api/internal/sources"
+	"crypto-api/internal/sources/bitcoin"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -12,16 +12,17 @@ import (
 func BitcoinFeesHandler(c *cache.MemoryCache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		cacheKey := cache.KeyBitcoinFees
 
 		// Check cache first
-		if cached, ok := c.Get("fees"); ok {
-			resp := cached.(models.BitcoinFeesResponse)
-			resp.Cached = true
-			json.NewEncoder(w).Encode(resp)
+		if cached, ok := cache.Get[models.BitcoinFeesResponse](c, cacheKey); ok {
+			cached.Meta.Cached = true
+			json.NewEncoder(w).Encode(cached)
 			return
 		}
 
-		fees, err := sources.GetBitcoinFees()
+		ctx := r.Context()
+		fees, err := bitcoin.GetBitcoinFees(ctx)
 		if err != nil {
 			httpErr := MapError(err)
 			JSONError(w, httpErr.Status, httpErr.Message)
@@ -38,7 +39,7 @@ func BitcoinFeesHandler(c *cache.MemoryCache) http.HandlerFunc {
 			High:   fees.FastestFee,
 		}
 
-		c.Set("fees", resp, 30*time.Second)
+		cache.Set(c, cacheKey, resp, 30*time.Second)
 		json.NewEncoder(w).Encode(resp)
 	}
 }

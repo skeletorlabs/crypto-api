@@ -1,6 +1,7 @@
 package models
 
 type ProtocolResponse struct {
+	Meta     Meta    `json:"meta"`
 	Name     string  `json:"name"`
 	Slug     string  `json:"slug"`
 	TVL      float64 `json:"tvl"`

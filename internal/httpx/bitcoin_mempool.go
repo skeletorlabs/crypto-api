@@ -3,7 +3,7 @@ package httpx
 import (
 	"crypto-api/internal/cache"
 	"crypto-api/internal/models"
-	"crypto-api/internal/sources"
+	"crypto-api/internal/sources/bitcoin"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -12,15 +12,16 @@ import (
 func GetBitcoinMempoolHandler(c *cache.MemoryCache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		cacheKey := cache.KeyBitcoinMempool
 
-		if cached, ok := c.Get("bitcoin:mempool"); ok {
-			resp := cached.(models.BitcoinMempoolResponse)
-			resp.Cached = true
-			json.NewEncoder(w).Encode(resp)
+		if cached, ok := cache.Get[models.BitcoinMempoolResponse](c, cacheKey); ok {
+			cached.Meta.Cached = true
+			json.NewEncoder(w).Encode(cached)
 			return
 		}
 
-		stats, err := sources.GetBitcoinMempool()
+		ctx := r.Context()
+		stats, err := bitcoin.GetBitcoinMempool(ctx)
 		if err != nil {
 			httpErr := MapError(err)
 			JSONError(w, httpErr.Status, httpErr.Message)
@@ -37,8 +38,7 @@ func GetBitcoinMempoolHandler(c *cache.MemoryCache) http.HandlerFunc {
 			TotalFee: stats.TotalFee,
 		}
 
-		c.Set("bitcoin:mempool", resp, 30*time.Second)
-
+		cache.Set(c, cacheKey, resp, 30*time.Second)
 		json.NewEncoder(w).Encode(resp)
 	}
 }

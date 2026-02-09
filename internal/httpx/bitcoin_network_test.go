@@ -24,7 +24,8 @@ func TestBitcoinNetworkHandler_FromCache(t *testing.T) {
 		AvgBlockTimeSeconds: 600,
 	}
 
-	c.Set("network", cachedResp, time.Minute)
+	cachedKey := cache.KeyBitcoinNetwork
+	cache.Set(c, cachedKey, cachedResp, time.Minute)
 
 	req := httptest.NewRequest(http.MethodGet, "/bitcoin/network", nil)
 	rr := httptest.NewRecorder()

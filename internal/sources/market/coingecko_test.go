@@ -1,7 +1,9 @@
-package sources
+package market
 
 import (
 	"bytes"
+	"context"
+	"crypto-api/internal/sources"
 	"errors"
 	"io"
 	"net/http"
@@ -17,12 +19,12 @@ func (f *fakeHTTPClient) Do(req *http.Request) (*http.Response, error) {
 }
 
 func TestGetPriceUSD_Success(t *testing.T) {
-	originalClient := httpClient
-	defer func() { httpClient = originalClient }()
+	originalClient := sources.HttpClient
+	defer func() { sources.HttpClient = originalClient }()
 
 	body := `{"bitcoin":{"usd":50000.0}}`
 
-	httpClient = &fakeHTTPClient{
+	sources.HttpClient = &fakeHTTPClient{
 		do: func(req *http.Request) (*http.Response, error) {
 			return &http.Response{
 				StatusCode: http.StatusOK,
@@ -31,7 +33,7 @@ func TestGetPriceUSD_Success(t *testing.T) {
 		},
 	}
 
-	price, err := GetPriceUSD("bitcoin")
+	price, err := GetPriceUSD(context.Background(), "bitcoin")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -41,17 +43,17 @@ func TestGetPriceUSD_Success(t *testing.T) {
 }
 
 func TestGetPriceUSD_UpstreamError(t *testing.T) {
-	originalClient := httpClient
-	defer func() { httpClient = originalClient }()
+	originalClient := sources.HttpClient
+	defer func() { sources.HttpClient = originalClient }()
 
-	httpClient = &fakeHTTPClient{
+	sources.HttpClient = &fakeHTTPClient{
 		do: func(req *http.Request) (*http.Response, error) {
 			return nil, errors.New("network down")
 		},
 	}
 
-	_, err := GetPriceUSD("bitcoin")
-	if !errors.Is(err, ErrUpstreamTimeout) {
+	_, err := GetPriceUSD(context.Background(), "bitcoin")
+	if !errors.Is(err, sources.ErrUpstreamTimeout) {
 		t.Fatalf("expected ErrUpstreamTimeout, got %v", err)
 	}
 }

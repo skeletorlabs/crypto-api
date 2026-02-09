@@ -12,8 +12,9 @@ import (
 
 func TestBitcoinFeesHandler_FromCache(t *testing.T) {
 	c := cache.NewMemoryCache()
+	cachedKey := cache.KeyBitcoinFees
 
-	c.Set("fees", models.BitcoinFeesResponse{
+	cache.Set(c, cachedKey, models.BitcoinFeesResponse{
 		Low:    10,
 		Medium: 20,
 		High:   30,
