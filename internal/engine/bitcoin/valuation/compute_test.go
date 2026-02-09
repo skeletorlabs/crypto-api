@@ -5,7 +5,7 @@ import (
 )
 
 func TestCompute_Logic(t *testing.T) {
-	// Cenário controlado
+	// Controlled scenario
 	btcPrice := 60000.0
 	m2Billions := 21000.0 // Eg: 21T dollars
 

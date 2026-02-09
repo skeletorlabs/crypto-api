@@ -7,6 +7,7 @@ import (
 
 func Compute(currentBlock int, avgBlockTime float64) State {
 	const halvingInterval = 210000
+	const initialSubsidy = 50.0 // Starting BTC subsidy
 
 	epoch := currentBlock / halvingInterval
 	nextHalvingBlock := (epoch + 1) * halvingInterval
@@ -19,6 +20,8 @@ func Compute(currentBlock int, avgBlockTime float64) State {
 	remainingMinutes := float64(blocksRemaining) * avgBlockTime
 	estimatedDate :=
 		time.Now().UTC().Add(time.Duration(remainingMinutes) * time.Minute)
+	currentSubsidy := initialSubsidy / math.Pow(2, float64(epoch))
+	nextSubsidy := currentSubsidy / 2
 
 	return State{
 		CurrentBlock:     currentBlock,
@@ -26,5 +29,7 @@ func Compute(currentBlock int, avgBlockTime float64) State {
 		BlocksRemaining:  blocksRemaining,
 		ProgressPercent:  progressPercent,
 		EstimatedDate:    estimatedDate,
+		CurrentSubsidy:   currentSubsidy,
+		NextSubsidy:      nextSubsidy,
 	}
 }

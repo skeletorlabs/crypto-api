@@ -7,7 +7,7 @@ import (
 
 func TestCompute_PerfectCorrelation(t *testing.T) {
 	now := time.Now()
-	// Cenário: BTC e M2 going up together
+	// BTC e M2 going up together
 	m2 := []DataPoint{
 		{Date: now, Value: 100},
 		{Date: now.AddDate(0, 0, -1), Value: 90},

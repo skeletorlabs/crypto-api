@@ -63,7 +63,7 @@ func TestCorrelationHandler_FromCache(t *testing.T) {
 			UpdatedAt: time.Now().UTC(),
 			Cached:    false,
 		},
-		Coefficient: 0.85, // Campo correto conforme sua struct
+		Coefficient: 0.85,
 		SampleCount: 100,
 	}
 
