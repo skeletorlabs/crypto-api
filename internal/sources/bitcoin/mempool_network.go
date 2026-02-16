@@ -3,9 +3,7 @@ package bitcoin
 import (
 	"context"
 	"crypto-api/internal/sources"
-	"encoding/json"
-	"io"
-	"net/http"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -60,112 +58,43 @@ func GetBitcoinNetwork(ctx context.Context) (*NetworkRawData, error) {
 }
 
 func getBitcoinBlockHeight(ctx context.Context) (int64, error) {
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodGet,
-		"https://mempool.space/api/blocks/tip/height",
-		nil,
-	)
+	url := "https://mempool.space/api/blocks/tip/height"
+
+	body, err := sources.FetchRaw(ctx, url)
 	if err != nil {
 		return 0, err
 	}
 
-	resp, err := sources.HttpClient.Do(req)
-	if err != nil {
-		return 0, sources.ErrUpstreamTimeout
-	}
-	defer resp.Body.Close()
+	return strconv.ParseInt(strings.TrimSpace(string(body)), 10, 64)
 
-	if resp.StatusCode != http.StatusOK {
-		return 0, sources.ErrUpstreamBadStatus
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return 0, err
-	}
-
-	height, err := strconv.ParseInt(
-		strings.TrimSpace(string(body)),
-		10,
-		64,
-	)
-	if err != nil {
-		return 0, err
-	}
-
-	return height, nil
 }
 
-func getBitcoinHashrateTHs(ctx context.Context) (hashrateTHs float64, difficulty float64, err error) {
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodGet,
-		"https://mempool.space/api/v1/mining/hashrate/1y",
-		nil,
-	)
-	if err != nil {
-		return
-	}
-
-	resp, err := sources.HttpClient.Do(req)
-	if err != nil {
-		err = sources.ErrUpstreamTimeout
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		err = sources.ErrUpstreamBadStatus
-		return
-	}
+func getBitcoinHashrateTHs(ctx context.Context) (float64, float64, error) {
+	url := "https://mempool.space/api/v1/mining/hashrate/1y"
 
 	var hrResp mempoolHashrate
-	if err = json.NewDecoder(resp.Body).Decode(&hrResp); err != nil {
-		return
+	if err := sources.FetchJSON(ctx, url, &hrResp); err != nil {
+		return 0, 0, err
 	}
 
 	if len(hrResp.Hashrates) == 0 {
-		err = sources.ErrUpstreamBadStatus
-		return
+		return 0, 0, fmt.Errorf("empty hashrate data")
 	}
 
 	last := hrResp.Hashrates[len(hrResp.Hashrates)-1].AvgHashrate
-	// last is returned in H/s by mempool.space => convert to TH/s
-	hashrateTHs = last / 1e12
-	difficulty = hrResp.CurrentDifficulty
-
-	return
+	return last / 1e12, hrResp.CurrentDifficulty, nil
 }
 
 func getBitcoinAvgBlockTime(ctx context.Context) (float64, error) {
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodGet,
-		"https://mempool.space/api/blocks",
-		nil,
-	)
-	if err != nil {
-		return 0, err
-	}
-
-	resp, err := sources.HttpClient.Do(req)
-	if err != nil {
-		return 0, sources.ErrUpstreamTimeout
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return 0, sources.ErrUpstreamBadStatus
-	}
+	url := "https://mempool.space/api/blocks"
 
 	var blocks []mempoolBlock
-	if err := json.NewDecoder(resp.Body).Decode(&blocks); err != nil {
+	if err := sources.FetchJSON(ctx, url, &blocks); err != nil {
 		return 0, err
 	}
 
 	if len(blocks) < 2 {
-		return 0, sources.ErrUpstreamBadStatus
+		return 0, fmt.Errorf("insufficient blocks for average")
 	}
 
 	var sum float64

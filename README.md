@@ -16,6 +16,8 @@ Built as part of **Skeletor Labs** to demonstrate backend engineering, API desig
 - 🧪 Test Driven: High coverage for handlers, engines, and data sources.
 - 🔢 API Versioning: Clean routing under /v1.
 - 🧼 Standardized Responses: Consistent metadata envelope (meta.updatedAt, meta.cached).
+- 🛡️ Multi-Provider Resilience: Price aggregation with automated fallback (Binance → Coinbase → Kraken → CoinGecko).
+- 🔌 Unified Data Engine: Standardized HTTP fetching with generic JSON decoding and automated retries.
 
 ### API Endpoints
 
@@ -67,9 +69,10 @@ Status code:
 
 `GET /v1/price/<token>`
 
-- `token` is case-insensitive, token identifier (eg: bitcoin), not the ticker symbol
-- Internally normalized to lowercase
-- Returned token-name is always lowercase
+- `token` is case-insensitive, token identifier (e.g., bitcoin) or common ticker symbols (e.g., btc).
+- Resilient Sourcing: The API implements a prioritized fallback strategy: **Binance → Coinbase → Kraken → CoinGecko**.
+- Internally normalized to lowercase.
+- Returned token-name is always lowercase.
 
 Example:
 
@@ -316,7 +319,7 @@ Notes:
 
 - Data sourced from:
   - **mempool.space** (Network)
-  - **CoinGecko** (Prices)
+  - **Binance**, **Coinbase**, **Kraken** [High-priority] and CoinGecko [Fallback] (Prices)
   - **FRED - Federal Reserve Economic Data** (Macro/M2)
 - Results are managed via Type-safe Generic In-memory caching.
 - Network metrics are aggregated from multiple endpoints:
@@ -345,7 +348,7 @@ Notes:
 │   ├── models       # API response models
 │   └── sources      # Upstream providers
 │       ├── macro    # FRED API (M2 Money Supply)
-│       ├── market   # CoinGecko API (Historical & Spot Prices)
+│       ├── market   # Price aggregators (Binance, Coinbase, Kraken, Coingecko)
 │       └── bitcoin  # Mempool.space API (Fees, Blocks, Mempool)
 ```
 
@@ -412,6 +415,8 @@ gotestsum --format pkgname-and-test-fails
 - Separation of Concerns: Analytics are decoupled from HTTP concerns via the engine layer, ensuring core logic is easily testable.
 - Resilience: Upstream failures are handled gracefully with cached fallbacks and standardized error codes.
 - **Statistical Analysis**: The correlation engine implements the Pearson Correlation Coefficient to measure the linear relationship between BTC price and M2 supply over a 730-day rolling window.
+- Unified Fetching: Replaced redundant HTTP boilerplate with a centralized, generic FetchJSON[T] engine, reducing codebase size and ensuring consistent timeout/retry policies.
+- Price Fallback Strategy: Implemented a prioritized provider loop that ensures price availability even if primary exchanges or aggregators face rate limits or downtime.
 
 <hr style="margin: 40px 0;" />
 
@@ -425,7 +430,9 @@ This project is actively used as an internal data layer and technical showcase.
 - [x] Intelligence Engine (Valuation & Correlation)
 - [x] Type-safe Cache implementation
 - [x] Docker support
-- [ ] Persistence layer for historical snapshots (próximo passo natural?)
+- [x] Multi-provider price aggregation with automated fallback.
+- [x] Unified HTTP/JSON fetching engine.
+- [ ] Persistence layer for historical snapshots
 
 <hr style="margin: 40px 0;" />
 

@@ -4,9 +4,7 @@ import (
 	"context"
 	"crypto-api/internal/engine/bitcoin/correlation"
 	"crypto-api/internal/sources"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -26,27 +24,11 @@ func fetchFredData(ctx context.Context, limit int) (*FredResponse, error) {
 		apiKey, limit,
 	)
 
-	// We can centralize the timeout here too
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := sources.HttpClient.Do(req)
-	if err != nil {
-		return nil, sources.ErrUpstreamTimeout
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, sources.ErrUpstreamBadStatus
-	}
-
 	var data FredResponse
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+	if err := sources.FetchJSON(ctx, url, &data); err != nil {
 		return nil, err
 	}
 
