@@ -16,24 +16,26 @@ WITH generated_data AS (
     FROM generate_series(0, 90) AS s(i)
 ),
 
--- Insert price history (including today for fallback logic)
+-- Insert price history (INCLUDING today)
 inserted_prices AS (
     INSERT INTO price_history (timestamp, asset, price_usd, source)
-    SELECT target_date, 'bitcoin', generated_price, 'dev-seed'
+    SELECT target_date, 'BTC', generated_price, 'dev-seed'
     FROM generated_data
     RETURNING timestamp
 ),
 
--- Insert macro history (exclude today so worker creates it)
+-- Insert macro history (INCLUDING today)
 inserted_macro AS (
     INSERT INTO macro_stats (m2_supply, source_date)
     SELECT generated_m2, target_date
     FROM generated_data
-    WHERE day_offset > 0
+    RETURNING source_date
 )
 
 -- 3. Insert historical intelligence snapshots (exclude today)
 INSERT INTO intelligence_snapshots (
+    snapshot_date,
+    created_at,
     price_usd, 
     m2_supply, 
     btc_m2_ratio, 
@@ -44,10 +46,11 @@ INSERT INTO intelligence_snapshots (
     avg_block_time,
     network_health_score, 
     trend_status, 
-    source_attribution, 
-    created_at
+    source_attribution
 )
 SELECT 
+    target_date::date,
+    target_date,
     generated_price,
     generated_m2,
     (generated_price / NULLIF(generated_m2, 0)),
@@ -58,8 +61,7 @@ SELECT
     600.0,
     95,
     'Stable',
-    'dev-seed',
-    target_date
+    'dev-seed'
 FROM generated_data
 WHERE day_offset > 0;
 

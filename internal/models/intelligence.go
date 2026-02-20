@@ -10,8 +10,11 @@ type IntelligencePrice struct {
 
 // IntelligenceSnapshot represents a persisted structural intelligence state.
 type IntelligenceSnapshot struct {
-	ID        int       `json:"id"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID int `json:"id"`
+
+	// Identity
+	SnapshotDate time.Time `json:"snapshotDate"`
+	CreatedAt    time.Time `json:"createdAt"`
 
 	// Market & Liquidity
 	PriceUSD         float64 `json:"priceUsd"`

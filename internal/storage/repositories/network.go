@@ -57,3 +57,40 @@ func (r *NetworkRepository) GetLatest(ctx context.Context) (*models.BitcoinNetwo
 
 	return &n, err
 }
+
+func (r *NetworkRepository) DeleteOlderThan(ctx context.Context, days int) error {
+	query := `
+        DELETE FROM network_stats
+        WHERE created_at < NOW() - ($1 || ' days')::interval
+    `
+	_, err := r.pool.Exec(ctx, query, days)
+	return err
+}
+
+// GetPrevious returns the second most recent network snapshot.
+func (r *NetworkRepository) GetPrevious(ctx context.Context) (*models.BitcoinNetworkResponse, error) {
+	var n models.BitcoinNetworkResponse
+
+	query := `
+        SELECT block_height, hashrate_ths, avg_block_time, difficulty, created_at
+        FROM network_stats
+        ORDER BY created_at DESC
+        OFFSET 1
+        LIMIT 1
+    `
+
+	err := r.pool.QueryRow(ctx, query).Scan(
+		&n.BlockHeight,
+		&n.HashrateTHs,
+		&n.AvgBlockTimeSeconds,
+		&n.Difficulty,
+		&n.Meta.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	n.Meta.Cached = false
+	return &n, nil
+}

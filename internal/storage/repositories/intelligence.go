@@ -23,25 +23,40 @@ func (r *IntelligenceRepository) SaveSnapshot(ctx context.Context, s models.Inte
 	}
 
 	query := `
-    INSERT INTO intelligence_snapshots (
-      created_at, price_usd, m2_supply, btc_m2_ratio, 
-      correlation, block_height, hashrate_ths, difficulty,
-      network_health_score, trend_status, avg_block_time, source_attribution
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
+		INSERT INTO intelligence_snapshots (
+			snapshot_date,
+			created_at,
+			price_usd,
+			m2_supply,
+			btc_m2_ratio, 
+			correlation,
+			block_height,
+			hashrate_ths,
+			difficulty,
+			avg_block_time,
+			network_health_score,
+			trend_status,
+			source_attribution
+		) VALUES (
+			$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13
+		)
+		ON CONFLICT (snapshot_date) DO NOTHING
+		`
 
 	_, err := r.pool.Exec(ctx, query,
-		s.CreatedAt,
-		s.PriceUSD,
-		s.M2SupplyBillions,
-		s.BTCM2Ratio,
-		s.Correlation,
-		s.BlockHeight,
-		s.HashrateTHs,
-		s.Difficulty,
-		s.NetworkHealthScore,
-		s.TrendStatus,
-		s.AvgBlockTime,
-		s.SourceAttribution,
+		s.SnapshotDate,       // $1
+		s.CreatedAt,          // $2
+		s.PriceUSD,           // $3
+		s.M2SupplyBillions,   // $4
+		s.BTCM2Ratio,         // $5
+		s.Correlation,        // $6
+		s.BlockHeight,        // $7
+		s.HashrateTHs,        // $8
+		s.Difficulty,         // $9
+		s.AvgBlockTime,       // $10
+		s.NetworkHealthScore, // $11
+		s.TrendStatus,        // $12
+		s.SourceAttribution,  // $13
 	)
 
 	return err
@@ -57,15 +72,27 @@ func (r *IntelligenceRepository) GetLatest(ctx context.Context) (*models.Intelli
 
 	query := `
     SELECT 
-      id, created_at, price_usd, m2_supply, btc_m2_ratio, correlation, 
-      block_height, hashrate_ths, difficulty, avg_block_time, 
-      network_health_score, trend_status, source_attribution 
+      id,
+      snapshot_date,
+      created_at,
+      price_usd,
+      m2_supply,
+      btc_m2_ratio,
+      correlation, 
+      block_height,
+      hashrate_ths,
+      difficulty,
+      avg_block_time, 
+      network_health_score,
+      trend_status,
+      source_attribution 
     FROM intelligence_snapshots 
-    ORDER BY created_at DESC 
+    ORDER BY snapshot_date DESC 
     LIMIT 1`
 
 	err := r.pool.QueryRow(ctx, query).Scan(
 		&s.ID,
+		&s.SnapshotDate,
 		&s.CreatedAt,
 		&s.PriceUSD,
 		&s.M2SupplyBillions,

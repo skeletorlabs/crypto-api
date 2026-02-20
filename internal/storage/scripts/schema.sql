@@ -56,7 +56,9 @@ CREATE TABLE macro_stats (
 -- ==========================================================
 CREATE TABLE intelligence_snapshots (
     id SERIAL PRIMARY KEY,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    snapshot_date DATE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     price_usd DOUBLE PRECISION NOT NULL,
     m2_supply DOUBLE PRECISION NOT NULL,
@@ -70,7 +72,9 @@ CREATE TABLE intelligence_snapshots (
 
     network_health_score INTEGER NOT NULL,
     trend_status TEXT NOT NULL,
-    source_attribution TEXT
+    source_attribution TEXT,
+
+    CONSTRAINT unique_snapshot_date UNIQUE (snapshot_date)
 );
 
 -- ==========================================================
@@ -80,7 +84,7 @@ CREATE INDEX idx_price_history_latest
     ON price_history (asset, timestamp DESC);
 
 CREATE INDEX idx_network_latest 
-    ON network_stats (created_at DESC);
+    ON network_stats (created_at DESC, block_height DESC);
 
 CREATE INDEX idx_macro_latest 
     ON macro_stats (source_date DESC);
@@ -99,5 +103,5 @@ SELECT
 FROM price_history p
 JOIN macro_stats m 
     ON p.timestamp::DATE = m.source_date::DATE
-WHERE p.asset = 'bitcoin'
+WHERE p.asset = 'BTC'
 ORDER BY p.timestamp DESC;

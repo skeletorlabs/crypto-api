@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto-api/internal/cache"
 	"crypto-api/internal/engine/bitcoin/halving"
+	"crypto-api/internal/engine/bitcoin/valuation"
 	"crypto-api/internal/models"
 	"crypto-api/internal/sources/bitcoin"
 	"crypto-api/internal/storage/repositories"
@@ -40,24 +41,32 @@ func refreshNetwork(ctx context.Context, c *cache.MemoryCache, repo *repositorie
 	}
 
 	// Compute trend based on previous stored value
-	trendStatus := models.TrendStable
 	prev, err := repo.GetLatest(ctx)
 	if err == nil && prev != nil {
-		diff := data.AvgBlockTime - prev.AvgBlockTimeSeconds
-		const epsilon = 30.0
-
-		if diff > epsilon {
-			trendStatus = models.TrendWorsening
-		} else if diff < -epsilon {
-			trendStatus = models.TrendImproving
+		if prev.BlockHeight == data.BlockHeight {
+			// No new block, skip persistence
+			return
 		}
 	}
 
-	halvingState := halving.Compute(int(data.BlockHeight), data.AvgBlockTime/60)
+	hasPrev := err == nil && prev != nil
+	prevAvg := 0.0
+	if hasPrev {
+		prevAvg = prev.AvgBlockTimeSeconds
+	}
+
+	trendStatus := valuation.CalculateTrend(
+		data.AvgBlockTime,
+		prevAvg,
+		hasPrev,
+	)
+
+	now := time.Now().UTC()
+	halvingState := halving.Compute(int(data.BlockHeight), data.AvgBlockTime/60, now)
 
 	resp := models.BitcoinNetworkResponse{
 		Meta: models.Meta{
-			UpdatedAt: time.Now().UTC(),
+			UpdatedAt: now,
 			Cached:    false,
 		},
 		BlockHeight:         data.BlockHeight,
@@ -71,6 +80,8 @@ func refreshNetwork(ctx context.Context, c *cache.MemoryCache, repo *repositorie
 	if err := repo.Save(ctx, resp); err != nil {
 		log.Printf("[network-worker] save error: %v", err)
 	}
+
+	_ = repo.DeleteOlderThan(ctx, 90)
 
 	cache.Set(c, cache.KeyBitcoinNetwork, resp, cache.TTLNetworkStats)
 }

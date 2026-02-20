@@ -3,6 +3,7 @@ package valuation
 import (
 	"math"
 
+	"crypto-api/internal/config"
 	"crypto-api/internal/models"
 )
 
@@ -13,13 +14,10 @@ func CalculateNetworkHealth(avgBlockTime float64) int {
 		return 0
 	}
 
-	const target = 600.0 // seconds
-
+	target := config.BitcoinTargetBlockSeconds
 	diff := math.Abs(avgBlockTime - target)
 	deviationPercent := (diff / target) * 100
-
 	score := 100.0 - (deviationPercent * 2)
-
 	if score > 100 {
 		return 100
 	}
@@ -34,16 +32,16 @@ func CalculateNetworkHealth(avgBlockTime float64) int {
 // the previous intelligence snapshot using a fixed epsilon threshold.
 func CalculateTrend(
 	currentAvgTime float64,
-	previous *models.IntelligenceSnapshot,
+	previousAvgTime float64,
+	hasPrevious bool,
 ) models.Status {
 
-	if previous == nil {
+	if !hasPrevious {
 		return models.TrendStable
 	}
 
-	const epsilon = 30.0 // seconds tolerance
-
-	diff := currentAvgTime - previous.AvgBlockTime
+	epsilon := config.TrendEpsilonSeconds
+	diff := currentAvgTime - previousAvgTime
 
 	if diff > epsilon {
 		return models.TrendWorsening

@@ -7,11 +7,14 @@ import (
 	"time"
 
 	"crypto-api/internal/cache"
+	"crypto-api/internal/config"
 	"crypto-api/internal/engine/bitcoin/correlation"
 	"crypto-api/internal/engine/bitcoin/valuation"
 	"crypto-api/internal/models"
 	"crypto-api/internal/storage/repositories"
 )
+
+const assetSymbol = "BTC"
 
 type IntelligenceProvider struct {
 	intelligenceCache *cache.MemoryCache
@@ -42,13 +45,9 @@ func NewIntelligenceProvider(
 // GenerateFullSnapshot builds and persists the daily intelligence snapshot.
 func (p *IntelligenceProvider) GenerateFullSnapshot(ctx context.Context) error {
 	// Prevent duplicate snapshot for the same UTC day
-	if latest, err := p.intelligenceRepo.GetLatest(ctx); err == nil && latest != nil {
-		if latest.CreatedAt.UTC().Format("2006-01-02") ==
-			time.Now().UTC().Format("2006-01-02") {
-			log.Printf("[intelligence] Snapshot for today already exists. Skipping.")
-			return nil
-		}
-	}
+	now := time.Now().UTC()
+
+	latestSnapshot, _ := p.intelligenceRepo.GetLatest(ctx)
 
 	// --- PRICE ---
 	var price float64
@@ -56,26 +55,27 @@ func (p *IntelligenceProvider) GenerateFullSnapshot(ctx context.Context) error {
 
 	data, found := cache.Get[models.IntelligencePrice](
 		p.intelligenceCache,
-		cache.KeyIntelligencePrice("BTC"),
+		cache.KeyIntelligencePrice(assetSymbol),
 	)
 
 	if !found {
 		log.Printf("[intelligence] Price missing in cache, attempting database fallback...")
-		latest, err := p.intelligenceRepo.GetLatest(ctx)
-		if err != nil || latest == nil {
+
+		if latestSnapshot == nil {
 			return fmt.Errorf("BTC price missing in cache and no database fallback available")
 		}
-		price = latest.PriceUSD
+
+		price = latestSnapshot.PriceUSD
 		source = "database_fallback"
 	} else {
 		price = data.Price
 	}
 
 	// Persist daily price before snapshot generation
-	today := time.Now().UTC().Truncate(24 * time.Hour)
+	today := now.Truncate(24 * time.Hour)
 	if err := p.priceHistoryRepo.SavePrice(ctx, models.PriceHistory{
 		Timestamp: today,
-		Asset:     "BTC",
+		Asset:     assetSymbol,
 		PriceUSD:  price,
 		Source:    source,
 	}); err != nil {
@@ -83,9 +83,20 @@ func (p *IntelligenceProvider) GenerateFullSnapshot(ctx context.Context) error {
 	}
 
 	// --- NETWORK ---
-	netData, err := p.networkRepo.GetLatest(ctx)
-	if err != nil {
-		return fmt.Errorf("network data missing for snapshot: %w", err)
+	var netData models.BitcoinNetworkResponse
+	cachedNet, found := cache.Get[models.BitcoinNetworkResponse](
+		p.intelligenceCache,
+		cache.KeyBitcoinNetwork,
+	)
+
+	if found {
+		netData = cachedNet
+	} else {
+		dbNet, err := p.networkRepo.GetLatest(ctx)
+		if err != nil {
+			return fmt.Errorf("network data missing for snapshot: %w", err)
+		}
+		netData = *dbNet
 	}
 
 	// --- MACRO ---
@@ -97,8 +108,11 @@ func (p *IntelligenceProvider) GenerateFullSnapshot(ctx context.Context) error {
 	// --- CORRELATION ---
 	pearsonValue := 0.0
 
-	m2History, _ := p.macroRepo.GetM2History(ctx, 30)
-	priceSeries, err := p.priceHistoryRepo.GetPriceSeries(ctx, "BTC", 30)
+	m2History, err := p.macroRepo.GetM2History(ctx, config.CorrelationLookbackDays)
+	if err != nil {
+		log.Printf("[intelligence] M2 history unavailable: %v", err)
+	}
+	priceSeries, err := p.priceHistoryRepo.GetPriceSeries(ctx, assetSymbol, config.CorrelationLookbackDays)
 	if err != nil {
 		log.Printf("[intelligence] Error fetching internal history: %v", err)
 	}
@@ -111,54 +125,31 @@ func (p *IntelligenceProvider) GenerateFullSnapshot(ctx context.Context) error {
 		})
 	}
 
-	// Forward-fill alignment
-	var alignedM2 []correlation.DataPoint
-	var finalBTCHistory []correlation.DataPoint
-	m2Index := 0
-	lastValue := 0.0
-	hasStarted := false
-
-	for _, btc := range btcHistory {
-		for m2Index < len(m2History) &&
-			(m2History[m2Index].Date.Before(btc.Date) ||
-				m2History[m2Index].Date.Equal(btc.Date)) {
-
-			lastValue = m2History[m2Index].Value
-			m2Index++
-			hasStarted = true
-		}
-
-		if hasStarted {
-			alignedM2 = append(alignedM2, correlation.DataPoint{
-				Date:  btc.Date,
-				Value: lastValue,
-			})
-			finalBTCHistory = append(finalBTCHistory, btc)
-		}
-	}
-
-	if len(alignedM2) >= 7 && len(alignedM2) == len(finalBTCHistory) {
-		if res, errCorr := correlation.Compute(alignedM2, finalBTCHistory); errCorr == nil {
-			pearsonValue = res.Coefficient
-		}
+	if res, errCorr := correlation.Compute(m2History, btcHistory); errCorr == nil {
+		pearsonValue = res.Coefficient
 	} else {
-		log.Printf(
-			"[intelligence] Insufficient or mismatched data (M2: %d, BTC: %d). Skipping Pearson.",
-			len(alignedM2),
-			len(finalBTCHistory),
-		)
+		log.Printf("[intelligence] Correlation skipped: %v", errCorr)
 	}
 
 	// --- VALUATION ---
 	vState := valuation.Compute(price, m2Supply)
 	healthScore := valuation.CalculateNetworkHealth(netData.AvgBlockTimeSeconds)
+	hasPrev := latestSnapshot != nil
+	prevAvg := 0.0
+	if hasPrev {
+		prevAvg = latestSnapshot.AvgBlockTime
+	}
 
-	prev, _ := p.intelligenceRepo.GetLatest(ctx)
-	trendStatus := valuation.CalculateTrend(netData.AvgBlockTimeSeconds, prev)
+	trendStatus := valuation.CalculateTrend(
+		netData.AvgBlockTimeSeconds,
+		prevAvg,
+		hasPrev,
+	)
 
 	// --- SNAPSHOT ---
 	snapshot := models.IntelligenceSnapshot{
-		CreatedAt:          time.Now().UTC(),
+		SnapshotDate:       today,
+		CreatedAt:          now,
 		PriceUSD:           price,
 		M2SupplyBillions:   m2Supply,
 		BTCM2Ratio:         vState.Ratio,

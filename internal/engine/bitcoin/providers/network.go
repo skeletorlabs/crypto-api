@@ -6,6 +6,7 @@ import (
 
 	"crypto-api/internal/cache"
 	"crypto-api/internal/engine/bitcoin/halving"
+	"crypto-api/internal/engine/bitcoin/valuation"
 	"crypto-api/internal/models"
 	"crypto-api/internal/sources/bitcoin"
 	"crypto-api/internal/storage"
@@ -33,31 +34,34 @@ func (p *NetworkProvider) Update(ctx context.Context) error {
 		return err
 	}
 
+	now := time.Now().UTC()
+
 	// --- TREND ---
-	trendStatus := models.TrendStable
+	prev, _ := p.db.GetLatestSnapshot(ctx)
 
-	prev, err := p.db.GetLatestSnapshot(ctx)
-	if err == nil && prev != nil {
-		diff := data.AvgBlockTime - prev.AvgBlockTime
-		const epsilon = 30.0
-
-		if diff > epsilon {
-			trendStatus = models.TrendWorsening
-		} else if diff < -epsilon {
-			trendStatus = models.TrendImproving
-		}
+	hasPrev := prev != nil
+	prevAvg := 0.0
+	if hasPrev {
+		prevAvg = prev.AvgBlockTime
 	}
+
+	trendStatus := valuation.CalculateTrend(
+		data.AvgBlockTime,
+		prevAvg,
+		hasPrev,
+	)
 
 	// --- HALVING ---
 	halvingState := halving.Compute(
 		int(data.BlockHeight),
-		data.AvgBlockTime/60, // convert seconds -> minutes
+		data.AvgBlockTime/60,
+		now,
 	)
 
 	// --- RESPONSE ---
 	resp := models.BitcoinNetworkResponse{
 		Meta: models.Meta{
-			UpdatedAt: time.Now().UTC(),
+			UpdatedAt: now,
 			Cached:    false,
 		},
 		BlockHeight:         data.BlockHeight,

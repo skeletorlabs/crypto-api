@@ -1,15 +1,16 @@
 package halving
 
 import (
+	"crypto-api/internal/config"
 	"math"
 	"time"
 )
 
 // Compute calculates halving cycle state based on
 // current block height and average block time (in minutes).
-func Compute(currentBlock int, avgBlockTime float64) State {
-	const halvingInterval = 210000
-	const initialSubsidy = 50.0 // Initial BTC block reward
+func Compute(currentBlock int, avgBlockTime float64, baseTime time.Time) State {
+	halvingInterval := config.HalvingInterval
+	const BitcoinInitialSubsidy = 50.0 // Initial BTC block reward
 
 	epoch := currentBlock / halvingInterval
 
@@ -23,9 +24,9 @@ func Compute(currentBlock int, avgBlockTime float64) State {
 
 	remainingMinutes := float64(blocksRemaining) * avgBlockTime
 	estimatedDate :=
-		time.Now().UTC().Add(time.Duration(remainingMinutes) * time.Minute)
+		baseTime.UTC().Add(time.Duration(remainingMinutes) * time.Minute)
 
-	currentSubsidy := initialSubsidy / math.Pow(2, float64(epoch))
+	currentSubsidy := BitcoinInitialSubsidy / math.Pow(2, float64(epoch))
 	nextSubsidy := currentSubsidy / 2
 
 	return State{
