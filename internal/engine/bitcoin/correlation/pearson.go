@@ -5,8 +5,8 @@ import (
 	"math"
 )
 
-// ComputePearsonCorrelation calculates the Pearson correlation coefficient
-// between two datasets (e.g., BTC prices and M2 Supply history).
+// pearsonCorrelation implements the standard Pearson formula.
+// It assumes both datasets have identical length.
 func pearsonCorrelation(datasetA []float64, datasetB []float64) (float64, error) {
 	n := len(datasetA)
 	if n != len(datasetB) {

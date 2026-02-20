@@ -2,115 +2,71 @@ package httpx
 
 import (
 	"crypto-api/internal/cache"
-	"crypto-api/internal/engine/bitcoin/correlation"
-	"crypto-api/internal/engine/bitcoin/valuation"
 	"crypto-api/internal/models"
+	"crypto-api/internal/storage/repositories"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 )
 
-func TestValuationHandler_Success(t *testing.T) {
-	// Setup caches
-	marketCache := cache.NewMemoryCache()
-	macroCache := cache.NewMemoryCache()
+func TestIntelligenceHandler(t *testing.T) {
+	// 1. Setup de dependências
+	// Note: intelRepo aqui deve ser tratado com cuidado se o Handler chamar o DB.
+	// Se o Handler usar a interface, um mock seria melhor, mas mantemos conforme sua estrutura.
+	intelRepo := &repositories.IntelligenceRepository{}
 	intelCache := cache.NewMemoryCache()
 
-	// Simulate BTC price and M2 supply in their respective caches
-	cache.Set(marketCache, cache.KeyMarketPrice("bitcoin"), 65000.0, time.Minute)
-	cache.Set(macroCache, cache.KeyMacroM2Supply, 21000.0, time.Minute)
+	t.Run("Should return data from Cache", func(t *testing.T) {
+		// Simula um snapshot já existente no cache
+		snapshot := models.IntelligenceSnapshot{
+			PriceUSD:    70000.0,
+			TrendStatus: "BULLISH",
+			CreatedAt:   time.Now().UTC(),
+		}
 
-	handler := ValuationHandler(marketCache, macroCache, intelCache)
-	req := httptest.NewRequest(http.MethodGet, "/bitcoin/valuation", nil)
-	rr := httptest.NewRecorder()
+		cache.Set(intelCache, cache.KeyIntelligenceLatestSnapshot, snapshot, cache.TTLIntelligenceSnapshot)
 
-	handler(rr, req)
+		handler := IntelligenceHandler(intelCache, intelRepo)
+		req := httptest.NewRequest(http.MethodGet, "/v1/bitcoin/intelligence", nil)
+		rec := httptest.NewRecorder()
 
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", rr.Code)
-	}
+		handler.ServeHTTP(rec, req)
 
-	var resp valuation.State
-	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("failed to unmarshal response: %v", err)
-	}
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d", rec.Code)
+		}
 
-	// Validations
-	if resp.Meta.Cached {
-		t.Error("expected cached=false on first hit")
-	}
-	if resp.BtcPrice != 65000.0 {
-		t.Errorf("expected price 65000, got %f", resp.BtcPrice)
-	}
+		// Valida se o JSON retornado tem o campo "cached": true
+		var res models.StandardResponse[models.IntelligenceSnapshot]
+		if err := json.NewDecoder(rec.Body).Decode(&res); err != nil {
+			t.Fatalf("failed to decode: %v", err)
+		}
 
-	// Test if the result was stored in intelligenceCache
-	if _, ok := cache.Get[valuation.State](intelCache, cache.KeyIntelligenceValuation); !ok {
-		t.Error("result should be stored in intelligenceCache")
-	}
-}
+		if !res.Meta.Cached {
+			t.Error("expected Meta.Cached to be true when data is in cache")
+		}
 
-func TestCorrelationHandler_FromCache(t *testing.T) {
-	intelCache := cache.NewMemoryCache()
-	marketCache := cache.NewMemoryCache()
-	macroCache := cache.NewMemoryCache()
+		if res.Data.PriceUSD != 70000.0 {
+			t.Errorf("expected price 70000, got %f", res.Data.PriceUSD)
+		}
+	})
 
-	// Simulate a pre-computed correlation result stored in the intelligence cache
-	cachedResult := &correlation.Result{
-		Meta: models.Meta{
-			UpdatedAt: time.Now().UTC(),
-			Cached:    false,
-		},
-		Coefficient: 0.85,
-		SampleCount: 100,
-	}
+	t.Run("Should fail when Cache and DB are empty", func(t *testing.T) {
+		// Cache novo e vazio
+		emptyCache := cache.NewMemoryCache()
 
-	cache.Set(intelCache, cache.KeyIntelligenceCorrelation, cachedResult, time.Minute)
+		handler := IntelligenceHandler(emptyCache, intelRepo)
+		req := httptest.NewRequest(http.MethodGet, "/v1/bitcoin/intelligence", nil)
+		rec := httptest.NewRecorder()
 
-	handler := CorrelationHandler(intelCache, marketCache, macroCache)
-	req := httptest.NewRequest(http.MethodGet, "/bitcoin/correlation", nil)
-	rr := httptest.NewRecorder()
+		// Como o repo não tem conexão real (é um struct vazio), o Handler deve retornar erro
+		handler.ServeHTTP(rec, req)
 
-	handler(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", rr.Code)
-	}
-
-	body := rr.Body.String()
-
-	if !strings.Contains(body, `"cached":true`) {
-		t.Errorf("expected cached:true in JSON, got %s", body)
-	}
-
-	if !strings.Contains(body, `"coefficient":0.85`) {
-		t.Errorf("expected coefficient:0.85 in JSON, got %s", body)
-	}
-}
-
-func TestCorrelationHandler_Integration(t *testing.T) {
-	// Guarantees that the flow of fetching historical data works and computes correlation correctly
-	intelCache := cache.NewMemoryCache()
-	marketCache := cache.NewMemoryCache()
-	macroCache := cache.NewMemoryCache()
-
-	// Mock of historical data in market and macro caches
-	history := []correlation.DataPoint{
-		{Date: time.Now(), Value: 100},
-		{Date: time.Now().AddDate(0, 0, -1), Value: 110},
-	}
-	cache.Set(macroCache, cache.KeyMacroM2History, history, time.Minute)
-	cache.Set(marketCache, cache.KeyMarketHistory("bitcoin"), history, time.Minute)
-
-	handler := CorrelationHandler(intelCache, marketCache, macroCache)
-	req := httptest.NewRequest(http.MethodGet, "/bitcoin/correlation", nil)
-	rr := httptest.NewRecorder()
-
-	handler(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", rr.Code)
-	}
+		// O status 503 ou 404 depende de como seu MapError trata o "not found" do repo
+		if rec.Code != http.StatusServiceUnavailable && rec.Code != http.StatusNotFound {
+			t.Errorf("expected error status when no data is available, got %d", rec.Code)
+		}
+	})
 }

@@ -3,46 +3,50 @@ package httpx
 import (
 	"crypto-api/internal/cache"
 	"crypto-api/internal/models"
-	"crypto-api/internal/sources/macro"
+	"crypto-api/internal/storage/repositories"
 	"encoding/json"
+	"log"
 	"net/http"
-	"time"
 )
 
-// This handler is responsible for fetching macroeconomic data (like M2 supply) and caching it.
-// For now is only M2, but we can easily expand it to include more indicators in the future.
-func MacroHandler(c *cache.MemoryCache) http.HandlerFunc {
+func MacroHandler(c *cache.MemoryCache, repo *repositories.MacroRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+
 		cacheKey := cache.KeyMacroM2Supply
 
+		// 1. Cache first
 		if cached, ok := cache.Get[models.MacroResponse](c, cacheKey); ok {
 			cached.Meta.Cached = true
-			json.NewEncoder(w).Encode(cached)
+			if err := json.NewEncoder(w).Encode(cached); err != nil {
+				log.Printf("[http] failed to encode cached macro response: %v", err)
+			}
 			return
 		}
 
-		ctx := r.Context()
-		m2Value, date, err := macro.GetM2Supply(ctx)
+		// 2. Database fallback
+		supply, lastUpdate, err := repo.GetLatestM2(r.Context())
 		if err != nil {
-			httpErr := MapError(err)
-			JSONError(w, httpErr.Status, httpErr.Message)
+			JSONError(w, http.StatusServiceUnavailable, "Macro data currently unavailable")
 			return
 		}
 
 		resp := models.MacroResponse{
 			Meta: models.Meta{
-				UpdatedAt: time.Now().UTC(),
+				UpdatedAt: lastUpdate,
 				Cached:    false,
 			},
 			M2Supply: models.M2Details{
-				Value:    m2Value,
-				Unit:     "Billions of Dollars",
-				DateTime: date,
+				Value:    supply,
+				Unit:     "Billions",
+				DateTime: lastUpdate,
 			},
 		}
 
-		cache.Set(c, cacheKey, resp, 24*time.Hour)
-		json.NewEncoder(w).Encode(resp)
+		cache.Set(c, cacheKey, resp, cache.TTLMacroData)
+
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			log.Printf("[http] failed to encode macro response: %v", err)
+		}
 	}
 }

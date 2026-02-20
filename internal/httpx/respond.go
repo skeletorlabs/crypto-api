@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"crypto-api/internal/models"
@@ -14,5 +15,8 @@ func JSONError(w http.ResponseWriter, status int, message string) {
 	resp := models.ErrorResponse{
 		Error: message,
 	}
-	json.NewEncoder(w).Encode(resp)
+
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("[http] failed to encode error response (status=%d): %v", status, err)
+	}
 }

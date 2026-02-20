@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -17,7 +18,9 @@ func ChainsHandler(c *cache.MemoryCache) http.HandlerFunc {
 
 		if cached, ok := cache.Get[models.StandardResponse[[]models.ChainResponse]](c, cacheKey); ok {
 			cached.Meta.Cached = true
-			json.NewEncoder(w).Encode(cached)
+			if err := json.NewEncoder(w).Encode(cached); err != nil {
+				log.Printf("[http] failed to encode cached chains response: %v", err)
+			}
 			return
 		}
 
@@ -46,7 +49,10 @@ func ChainsHandler(c *cache.MemoryCache) http.HandlerFunc {
 			Data: response,
 		}
 
-		cache.Set(c, cacheKey, resp, 5*time.Minute)
-		json.NewEncoder(w).Encode(resp)
+		cache.Set(c, cacheKey, resp, cache.TTLNetworkStats)
+
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			log.Printf("[http] failed to encode chains response: %v", err)
+		}
 	}
 }

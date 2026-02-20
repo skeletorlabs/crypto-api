@@ -1,9 +1,6 @@
 package models
 
-import (
-	"crypto-api/internal/engine/bitcoin/halving"
-	"crypto-api/internal/engine/bitcoin/trend"
-)
+import "crypto-api/internal/engine/bitcoin/halving"
 
 type BitcoinNetworkResponse struct {
 	Meta                Meta          `json:"meta"`
@@ -11,6 +8,6 @@ type BitcoinNetworkResponse struct {
 	HashrateTHs         float64       `json:"hashrateTHs"`
 	Difficulty          float64       `json:"difficulty"`
 	AvgBlockTimeSeconds float64       `json:"avgBlockTimeSeconds"`
-	Trend               trend.Status  `json:"trend"`
+	Trend               Status        `json:"trend"`
 	Halving             halving.State `json:"halving"`
 }

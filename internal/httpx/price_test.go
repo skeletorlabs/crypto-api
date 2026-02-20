@@ -11,11 +11,14 @@ import (
 	"crypto-api/internal/models"
 )
 
-func TestPriceHandler_MissingToken(t *testing.T) {
-	c := cache.NewMemoryCache()
-	handler := PriceHandler(c)
+// --- TESTES PARA MARKET PRICE (Hot Fetch) ---
 
-	req := httptest.NewRequest(http.MethodGet, "/price/", nil)
+func TestMarketPriceHandler_MissingToken(t *testing.T) {
+	c := cache.NewMemoryCache()
+	handler := MarketPriceHandler(c)
+
+	// Ajustado para o novo path /market/price/
+	req := httptest.NewRequest(http.MethodGet, "/market/price/", nil)
 	rr := httptest.NewRecorder()
 
 	handler(rr, req)
@@ -25,23 +28,18 @@ func TestPriceHandler_MissingToken(t *testing.T) {
 	}
 }
 
-func TestPriceHandler_FromCache(t *testing.T) {
+func TestMarketPriceHandler_FromCache(t *testing.T) {
 	c := cache.NewMemoryCache()
 	const fakePrice = 123.45
-	cacheKey := cache.KeyMarketPrice("bitcoin")
+	token := "bitcoin"
+	cacheKey := cache.KeyMarketPrice(token)
 
-	cache.Set[models.PriceResponse](c, cacheKey, models.PriceResponse{
-		Meta: models.Meta{
-			UpdatedAt: time.Now().UTC(),
-			Cached:    false, // O handler vai mudar para true ao ler do cache
-		},
-		Token: "bitcoin",
-		USD:   fakePrice,
-	}, time.Minute)
+	// Market cache ainda usa float64 simples
+	cache.Set(c, cacheKey, fakePrice, cache.TTLBitcoinPrice)
 
-	handler := PriceHandler(c)
+	handler := MarketPriceHandler(c)
 
-	req := httptest.NewRequest(http.MethodGet, "/price/bitcoin", nil)
+	req := httptest.NewRequest(http.MethodGet, "/market/price/bitcoin", nil)
 	rr := httptest.NewRecorder()
 
 	handler(rr, req)
@@ -52,25 +50,60 @@ func TestPriceHandler_FromCache(t *testing.T) {
 
 	body := rr.Body.String()
 	if !strings.Contains(body, `"cached":true`) {
-		t.Fatalf("expected cached=true, got %s", body)
+		t.Errorf("expected cached=true, got %s", body)
 	}
-
 	if !strings.Contains(body, "123.45") {
-		t.Fatalf("expected price 123.45, got %s", body)
+		t.Errorf("expected price 123.45, got %s", body)
 	}
 }
 
-func TestPriceHandler_UpstreamError(t *testing.T) {
-	c := cache.NewMemoryCache()
-	handler := PriceHandler(c)
+// --- TESTES PARA INTELLIGENCE PRICE (Blindado) ---
 
-	// invalid token to trigger upstream error
-	req := httptest.NewRequest(http.MethodGet, "/price/invalidToken", nil)
+func TestIntelligencePriceHandler_NotSupported(t *testing.T) {
+	c := cache.NewMemoryCache()
+	// Passamos nil no repo pois o handler deve barrar no IsSupportedAsset antes de consultar o banco
+	handler := IntelligencePriceHandler(c, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/intelligence/price/shitcoin", nil)
 	rr := httptest.NewRecorder()
 
 	handler(rr, req)
 
-	if rr.Code == http.StatusOK {
-		t.Fatalf("expected error code, got 200")
+	// Deve retornar 404 conforme sua implementação de IsSupportedAsset
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for unsupported asset, got %d", rr.Code)
+	}
+}
+
+func TestIntelligencePriceHandler_FromCache(t *testing.T) {
+	c := cache.NewMemoryCache()
+	token := "bitcoin"
+	cacheKey := cache.KeyIntelligencePrice(token)
+
+	// Criado conforme a sugestão do arquiteto: Struct no cache
+	fixedTime := time.Date(2026, 2, 18, 10, 0, 0, 0, time.UTC)
+	cache.Set(c, cacheKey, models.IntelligencePrice{
+		Price:     65000.0,
+		CreatedAt: fixedTime,
+	}, cache.TTLBitcoinPrice)
+
+	handler := IntelligencePriceHandler(c, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/intelligence/price/bitcoin", nil)
+	rr := httptest.NewRecorder()
+
+	handler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rr.Code)
+	}
+
+	body := rr.Body.String()
+	// Verifica se o updatedAt retornado é o CreatedAt que estava no cache
+	if !strings.Contains(body, "2026-02-18T10:00:00Z") {
+		t.Errorf("expected original snapshot timestamp, got %s", body)
+	}
+	if !strings.Contains(body, "65000") {
+		t.Errorf("expected price 65000, got %s", body)
 	}
 }

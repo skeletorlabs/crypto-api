@@ -3,7 +3,6 @@ package bitcoin
 import (
 	"context"
 	"crypto-api/internal/sources"
-	"time"
 )
 
 type HashrateHistoryResponse struct {
@@ -15,9 +14,6 @@ type HashrateHistoryResponse struct {
 
 func GetHashrateHistory(ctx context.Context) (HashrateHistoryResponse, error) {
 	url := "https://api.blockchain.info/charts/hash-rate?timespan=30days&format=json&cors=true"
-
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
 
 	var data HashrateHistoryResponse
 	if err := sources.FetchJSON(ctx, url, &data); err != nil {

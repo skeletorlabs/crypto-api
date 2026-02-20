@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -52,10 +53,13 @@ func ProtocolsHandler(c *cache.MemoryCache) http.HandlerFunc {
 				Data: protocols,
 			}
 
-			cache.Set(c, cacheKey, resp, 5*time.Minute)
+			cache.Set(c, cacheKey, resp, cache.TTLNetworkStats)
 		}
 
 		resp.Data = filters.FilterProtocols(resp.Data, chain, category)
-		json.NewEncoder(w).Encode(resp)
+
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			log.Printf("[http] failed to encode protocols response: %v", err)
+		}
 	}
 }

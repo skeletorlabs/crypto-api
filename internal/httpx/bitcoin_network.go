@@ -2,63 +2,39 @@ package httpx
 
 import (
 	"crypto-api/internal/cache"
-	"crypto-api/internal/engine/bitcoin/halving"
-	"crypto-api/internal/engine/bitcoin/trend"
 	"crypto-api/internal/models"
-	"crypto-api/internal/sources/bitcoin"
+	"crypto-api/internal/storage/repositories"
 	"encoding/json"
+	"log"
 	"net/http"
-	"time"
 )
 
-var bitcoinNetworkTrendBuffer = trend.NewBuffer(20)
-
-func BitcoinNetworkHandler(c *cache.MemoryCache) http.HandlerFunc {
+func BitcoinNetworkHandler(c *cache.MemoryCache, repo *repositories.NetworkRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		cacheKey := cache.KeyBitcoinNetwork
 
+		// 1. Cache first
 		if cached, ok := cache.Get[models.BitcoinNetworkResponse](c, cacheKey); ok {
 			cached.Meta.Cached = true
-			json.NewEncoder(w).Encode(cached)
+			if err := json.NewEncoder(w).Encode(cached); err != nil {
+				log.Printf("[http] failed to encode cached network response: %v", err)
+			}
 			return
 		}
 
-		ctx := r.Context()
-		data, err := bitcoin.GetBitcoinNetwork(ctx)
-
+		// 2. Database fallback
+		data, err := repo.GetLatest(r.Context())
 		if err != nil {
-			httpErr := MapError((err))
-			JSONError(w, httpErr.Status, httpErr.Message)
+			JSONError(w, http.StatusServiceUnavailable, "Network data currently unavailable")
 			return
 		}
 
-		snap := trend.Snapshot{
-			Timestamp:       time.Now().UTC(),
-			AvgBlockTimeSec: data.AvgBlockTime,
+		data.Meta.Cached = false
+		cache.Set(c, cacheKey, *data, cache.TTLNetworkStats)
+
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			log.Printf("[http] failed to encode network response: %v", err)
 		}
-
-		bitcoinNetworkTrendBuffer.Add(snap)
-		trendStatus := trend.ComputeTrend(
-			bitcoinNetworkTrendBuffer.All(),
-		)
-		halvingState := halving.Compute(int(data.BlockHeight), data.AvgBlockTime/60)
-
-		resp := models.BitcoinNetworkResponse{
-			Meta: models.Meta{
-				UpdatedAt: time.Now().UTC(),
-				Cached:    false,
-			},
-			BlockHeight:         data.BlockHeight,
-			HashrateTHs:         data.HashrateTHs,
-			Difficulty:          data.Difficulty,
-			AvgBlockTimeSeconds: data.AvgBlockTime,
-			Trend:               trendStatus,
-			Halving:             halvingState,
-		}
-
-		cache.Set(c, cacheKey, resp, 30*time.Second)
-
-		json.NewEncoder(w).Encode(resp)
 	}
 }

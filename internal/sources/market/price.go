@@ -85,7 +85,7 @@ func GetPriceUSD(ctx context.Context, token string) (float64, error) {
 				continue
 			}
 
-			attemptCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			attemptCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 			price, err := strategy.Parser(attemptCtx, strategy.URL(ticker))
 			cancel()
 			if err == nil {

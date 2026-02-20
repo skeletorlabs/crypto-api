@@ -1,3 +1,4 @@
+# Environment
 .env
 
 # Go Binaries
@@ -7,12 +8,30 @@ crypto-api
 *.dll
 *.so
 *.dylib
+*.test
 
 # Build folders
 bin/
 dist/
 
+# Test coverage
+*.out
+coverage.out
+coverage.html
+
+# Logs
+*.log
+logs/
+
+# Temp
+tmp/
+*.tmp
+
 # IDEs
 .vscode/
 .idea/
 *.swp
+
+# macOS
+.DS_Store
+**/.DS_Store

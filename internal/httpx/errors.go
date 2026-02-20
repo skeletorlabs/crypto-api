@@ -15,19 +15,37 @@ type HTTPError struct {
 
 func MapError(err error) HTTPError {
 	if err == nil {
-		return HTTPError{Status: 200, Message: ""}
+		return HTTPError{
+			Status:  http.StatusOK,
+			Message: "",
+		}
 	}
 
 	switch {
+
 	case errors.Is(err, sources.ErrUpstreamTimeout):
-		return HTTPError{Status: http.StatusGatewayTimeout, Message: "Upstream timeout"}
+		return HTTPError{
+			Status:  http.StatusGatewayTimeout,
+			Message: "Upstream timeout",
+		}
 
 	case errors.Is(err, sources.ErrUpstreamBadStatus):
-		return HTTPError{Status: http.StatusBadGateway, Message: "Upstream error"}
+		return HTTPError{
+			Status:  http.StatusBadGateway,
+			Message: "Upstream error",
+		}
 
+	// Fallback string match (legacy compatibility)
 	case strings.Contains(err.Error(), "price not found"):
-		return HTTPError{Status: http.StatusBadRequest, Message: err.Error()}
+		return HTTPError{
+			Status:  http.StatusBadRequest,
+			Message: err.Error(),
+		}
+
 	default:
-		return HTTPError{Status: http.StatusInternalServerError, Message: "Internal error"}
+		return HTTPError{
+			Status:  http.StatusInternalServerError,
+			Message: "Internal error",
+		}
 	}
 }

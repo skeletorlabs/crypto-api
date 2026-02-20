@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type NetworkRawData struct {
@@ -31,22 +30,19 @@ type mempoolHashrate struct {
 }
 
 func GetBitcoinNetwork(ctx context.Context) (*NetworkRawData, error) {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
 	height, err := getBitcoinBlockHeight(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("bitcoin height: %w", err)
 	}
 
 	hashrate, difficulty, err := getBitcoinHashrateTHs(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("bitcoin hashrate: %w", err)
 	}
 
 	avgTime, err := getBitcoinAvgBlockTime(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("bitcoin avg time: %w", err)
 	}
 
 	return &NetworkRawData{
@@ -65,8 +61,11 @@ func getBitcoinBlockHeight(ctx context.Context) (int64, error) {
 		return 0, err
 	}
 
-	return strconv.ParseInt(strings.TrimSpace(string(body)), 10, 64)
-
+	height, err := strconv.ParseInt(strings.TrimSpace(string(body)), 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse height: %w", err)
+	}
+	return height, nil
 }
 
 func getBitcoinHashrateTHs(ctx context.Context) (float64, float64, error) {

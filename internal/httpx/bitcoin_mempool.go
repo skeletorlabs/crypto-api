@@ -5,6 +5,7 @@ import (
 	"crypto-api/internal/models"
 	"crypto-api/internal/sources/bitcoin"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 )
@@ -16,7 +17,9 @@ func GetBitcoinMempoolHandler(c *cache.MemoryCache) http.HandlerFunc {
 
 		if cached, ok := cache.Get[models.BitcoinMempoolResponse](c, cacheKey); ok {
 			cached.Meta.Cached = true
-			json.NewEncoder(w).Encode(cached)
+			if err := json.NewEncoder(w).Encode(cached); err != nil {
+				log.Printf("[http] failed to encode cached mempool response: %v", err)
+			}
 			return
 		}
 
@@ -38,7 +41,10 @@ func GetBitcoinMempoolHandler(c *cache.MemoryCache) http.HandlerFunc {
 			TotalFee: stats.TotalFee,
 		}
 
-		cache.Set(c, cacheKey, resp, 30*time.Second)
-		json.NewEncoder(w).Encode(resp)
+		cache.Set(c, cacheKey, resp, cache.TTLBitcoinFees)
+
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			log.Printf("[http] failed to encode mempool response: %v", err)
+		}
 	}
 }

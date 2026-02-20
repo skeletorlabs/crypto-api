@@ -23,10 +23,19 @@ func NewMemoryCache() *MemoryCache {
 
 func Get[T any](c *MemoryCache, key string) (T, bool) {
 	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	item, ok := c.items[key]
-	if !ok || time.Now().After(item.ExpiresAt) {
+	c.mu.RUnlock()
+
+	if !ok {
+		var zero T
+		return zero, false
+	}
+
+	if time.Now().After(item.ExpiresAt) {
+		c.mu.Lock()
+		delete(c.items, key)
+		c.mu.Unlock()
+
 		var zero T
 		return zero, false
 	}

@@ -3,7 +3,6 @@ package bitcoin
 import (
 	"context"
 	"crypto-api/internal/sources"
-	"time"
 )
 
 type GlobalNodesResponse struct {
@@ -11,10 +10,6 @@ type GlobalNodesResponse struct {
 }
 
 func GetGlobalNodesCount(ctx context.Context) (int64, error) {
-
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
 	var data GlobalNodesResponse
 	url := "https://bitnodes.io/api/v1/snapshots/latest/"
 

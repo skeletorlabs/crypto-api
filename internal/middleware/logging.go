@@ -3,6 +3,7 @@ package middleware
 import (
 	"log"
 	"net/http"
+	"runtime/debug"
 	"time"
 )
 
@@ -19,11 +20,38 @@ func (r *statusRecorder) WriteHeader(code int) {
 func Logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 
-		next.ServeHTTP(recorder, r)
+		rec := &statusRecorder{
+			ResponseWriter: w,
+			status:         http.StatusOK,
+		}
+
+		next.ServeHTTP(rec, r)
 
 		duration := time.Since(start)
-		log.Printf("%s %s %d %s", r.Method, r.URL.Path, recorder.status, duration)
+
+		log.Printf(
+			"[api] %s %s status=%d duration=%s",
+			r.Method,
+			r.URL.Path,
+			rec.status,
+			duration,
+		)
+	})
+}
+
+func Recovery(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("[panic] %v\n%s", err, debug.Stack())
+
+				w.Header().Set("Content-Type", "text/plain")
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte("internal server error"))
+			}
+		}()
+
+		next.ServeHTTP(w, r)
 	})
 }

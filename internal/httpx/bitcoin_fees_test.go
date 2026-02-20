@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestBitcoinFeesHandler_FromCache(t *testing.T) {
@@ -18,7 +17,7 @@ func TestBitcoinFeesHandler_FromCache(t *testing.T) {
 		Low:    10,
 		Medium: 20,
 		High:   30,
-	}, time.Minute)
+	}, cache.TTLBitcoinPrice)
 
 	handler := BitcoinFeesHandler(c)
 

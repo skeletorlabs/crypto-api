@@ -3,7 +3,6 @@ package bitcoin
 import (
 	"context"
 	"crypto-api/internal/sources"
-	"time"
 )
 
 type MempoolFees struct {
@@ -19,9 +18,6 @@ type MempoolStats struct {
 }
 
 func GetBitcoinFees(ctx context.Context) (*MempoolFees, error) {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
 	var fees MempoolFees
 	url := "https://mempool.space/api/v1/fees/recommended"
 	if err := sources.FetchJSON(ctx, url, &fees); err != nil {
@@ -32,9 +28,6 @@ func GetBitcoinFees(ctx context.Context) (*MempoolFees, error) {
 }
 
 func GetBitcoinMempool(ctx context.Context) (*MempoolStats, error) {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
 	var stats MempoolStats
 	url := "https://mempool.space/api/mempool"
 

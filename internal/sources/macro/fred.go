@@ -24,9 +24,6 @@ func fetchFredData(ctx context.Context, limit int) (*FredResponse, error) {
 		apiKey, limit,
 	)
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
 	var data FredResponse
 	if err := sources.FetchJSON(ctx, url, &data); err != nil {
 		return nil, err
@@ -45,8 +42,17 @@ func GetM2Supply(ctx context.Context) (float64, time.Time, error) {
 		return 0, time.Time{}, fmt.Errorf("no data found")
 	}
 
-	val, _ := strconv.ParseFloat(data.Observations[0].Value, 64)
-	date, _ := time.Parse("2006-01-02", data.Observations[0].Date)
+	obs := data.Observations[0]
+
+	val, err := strconv.ParseFloat(data.Observations[0].Value, 64)
+	if err != nil {
+		return 0, time.Time{}, fmt.Errorf("fred: invalid value format '%s': %w", obs.Value, err)
+	}
+
+	date, err := time.Parse("2006-01-02", data.Observations[0].Date)
+	if err != nil {
+		return 0, time.Time{}, fmt.Errorf("fred: invalid date format '%s': %w", obs.Date, err)
+	}
 
 	return val, date, nil
 }
@@ -59,13 +65,21 @@ func GetM2History(ctx context.Context, limit int) ([]correlation.DataPoint, erro
 
 	var history []correlation.DataPoint
 	for _, obs := range data.Observations {
-		if val, err := strconv.ParseFloat(obs.Value, 64); err == nil {
-			date, _ := time.Parse("2006-01-02", obs.Date)
-			history = append(history, correlation.DataPoint{
-				Date:  date,
-				Value: val,
-			})
+		// No histórico, se um ponto falhar (ex: "." em feriados), apenas pulamos
+		val, err := strconv.ParseFloat(obs.Value, 64)
+		if err != nil {
+			continue
 		}
+
+		date, err := time.Parse("2006-01-02", obs.Date)
+		if err != nil {
+			continue
+		}
+
+		history = append(history, correlation.DataPoint{
+			Date:  date,
+			Value: val,
+		})
 	}
 
 	return history, nil

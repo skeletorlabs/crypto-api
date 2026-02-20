@@ -5,6 +5,7 @@ import (
 	"crypto-api/internal/models"
 	"crypto-api/internal/sources/bitcoin"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 )
@@ -17,7 +18,9 @@ func BitcoinFeesHandler(c *cache.MemoryCache) http.HandlerFunc {
 		// Check cache first
 		if cached, ok := cache.Get[models.BitcoinFeesResponse](c, cacheKey); ok {
 			cached.Meta.Cached = true
-			json.NewEncoder(w).Encode(cached)
+			if err := json.NewEncoder(w).Encode(cached); err != nil {
+				log.Printf("[http] failed to encode cached bitcoin fees: %v", err)
+			}
 			return
 		}
 
@@ -39,7 +42,10 @@ func BitcoinFeesHandler(c *cache.MemoryCache) http.HandlerFunc {
 			High:   fees.FastestFee,
 		}
 
-		cache.Set(c, cacheKey, resp, 30*time.Second)
-		json.NewEncoder(w).Encode(resp)
+		cache.Set(c, cacheKey, resp, cache.TTLBitcoinFees)
+
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			log.Printf("[http] failed to encode bitcoin fees response: %v", err)
+		}
 	}
 }
