@@ -1,29 +1,28 @@
-package httpx
+package intelligence
 
 import (
+	"crypto-api/internal/cache"
+	"crypto-api/internal/engine/intelligence"
+	api "crypto-api/internal/http"
+	"crypto-api/internal/models"
+	"crypto-api/internal/storage/repositories"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
 	"time"
-
-	"crypto-api/internal/cache"
-	"crypto-api/internal/engine/intelligence"
-	"crypto-api/internal/models"
-	"crypto-api/internal/sources/market"
-	"crypto-api/internal/storage/repositories"
 )
 
 func IntelligencePriceHandler(c *cache.MemoryCache, repo *repositories.IntelligenceRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := strings.ToLower(strings.TrimPrefix(r.URL.Path, "/intelligence/price/"))
 		if token == "" || token == "price" {
-			JSONError(w, http.StatusBadRequest, "missing token")
+			api.JSONError(w, http.StatusBadRequest, "missing token")
 			return
 		}
 
 		if !intelligence.IsSupportedAsset(token) {
-			JSONError(w, http.StatusNotFound, "token not supported by intelligence engine")
+			api.JSONError(w, http.StatusNotFound, "token not supported by intelligence engine")
 			return
 		}
 
@@ -46,36 +45,7 @@ func IntelligencePriceHandler(c *cache.MemoryCache, repo *repositories.Intellige
 			return
 		}
 
-		JSONError(w, http.StatusServiceUnavailable, "intelligence data not yet synchronized")
-	}
-}
-
-func MarketPriceHandler(c *cache.MemoryCache) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		token := strings.ToLower(strings.TrimPrefix(r.URL.Path, "/market/price/"))
-		if token == "" || token == "price" {
-			JSONError(w, http.StatusBadRequest, "missing token")
-			return
-		}
-
-		cacheKey := cache.KeyMarketPrice(token)
-		updatedAt := time.Now().UTC()
-
-		if price, ok := cache.Get[float64](c, cacheKey); ok {
-			sendPriceResponse(w, token, price, true, updatedAt)
-			return
-		}
-
-		ctx := r.Context()
-		price, err := market.GetPriceUSD(ctx, token)
-		if err != nil {
-			httpErr := MapError(err)
-			JSONError(w, httpErr.Status, httpErr.Message)
-			return
-		}
-
-		cache.Set(c, cacheKey, price, cache.TTLBitcoinPrice)
-		sendPriceResponse(w, token, price, false, updatedAt)
+		api.JSONError(w, http.StatusServiceUnavailable, "intelligence data not yet synchronized")
 	}
 }
 

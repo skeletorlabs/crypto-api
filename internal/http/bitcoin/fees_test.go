@@ -1,4 +1,4 @@
-package httpx
+package bitcoin
 
 import (
 	"crypto-api/internal/cache"

@@ -1,6 +1,7 @@
-package httpx
+package macro
 
 import (
+	api "crypto-api/internal/http"
 	"crypto-api/internal/cache"
 	"crypto-api/internal/models"
 	"crypto-api/internal/storage/repositories"
@@ -27,7 +28,7 @@ func MacroHandler(c *cache.MemoryCache, repo *repositories.MacroRepository) http
 		// 2. Database fallback
 		supply, lastUpdate, err := repo.GetLatestM2(r.Context())
 		if err != nil {
-			JSONError(w, http.StatusServiceUnavailable, "Macro data currently unavailable")
+			api.JSONError(w, http.StatusServiceUnavailable, "Macro data currently unavailable")
 			return
 		}
 

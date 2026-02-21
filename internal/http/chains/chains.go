@@ -1,4 +1,4 @@
-package httpx
+package chains
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"crypto-api/internal/cache"
+	api "crypto-api/internal/http"
 	"crypto-api/internal/models"
 	"crypto-api/internal/sources/market"
 )
@@ -27,8 +28,8 @@ func ChainsHandler(c *cache.MemoryCache) http.HandlerFunc {
 		ctx := r.Context()
 		chains, err := market.GetChains(ctx)
 		if err != nil {
-			httpErr := MapError(err)
-			JSONError(w, httpErr.Status, httpErr.Message)
+			httpErr := api.MapError(err)
+			api.JSONError(w, httpErr.Status, httpErr.Message)
 			return
 		}
 

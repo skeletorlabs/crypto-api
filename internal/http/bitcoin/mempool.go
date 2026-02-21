@@ -1,7 +1,8 @@
-package httpx
+package bitcoin
 
 import (
 	"crypto-api/internal/cache"
+	api "crypto-api/internal/http"
 	"crypto-api/internal/models"
 	"crypto-api/internal/sources/bitcoin"
 	"encoding/json"
@@ -10,42 +11,41 @@ import (
 	"time"
 )
 
-func BitcoinFeesHandler(c *cache.MemoryCache) http.HandlerFunc {
+func BitcoinMempoolHandler(c *cache.MemoryCache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		cacheKey := cache.KeyBitcoinFees
+		cacheKey := cache.KeyBitcoinMempool
 
-		// Check cache first
-		if cached, ok := cache.Get[models.BitcoinFeesResponse](c, cacheKey); ok {
+		if cached, ok := cache.Get[models.BitcoinMempoolResponse](c, cacheKey); ok {
 			cached.Meta.Cached = true
 			if err := json.NewEncoder(w).Encode(cached); err != nil {
-				log.Printf("[http] failed to encode cached bitcoin fees: %v", err)
+				log.Printf("[http] failed to encode cached mempool response: %v", err)
 			}
 			return
 		}
 
 		ctx := r.Context()
-		fees, err := bitcoin.GetBitcoinFees(ctx)
+		stats, err := bitcoin.GetBitcoinMempool(ctx)
 		if err != nil {
-			httpErr := MapError(err)
-			JSONError(w, httpErr.Status, httpErr.Message)
+			httpErr := api.MapError(err)
+			api.JSONError(w, httpErr.Status, httpErr.Message)
 			return
 		}
 
-		resp := models.BitcoinFeesResponse{
+		resp := models.BitcoinMempoolResponse{
 			Meta: models.Meta{
 				UpdatedAt: time.Now().UTC(),
 				Cached:    false,
 			},
-			Low:    fees.HourFee,
-			Medium: fees.HalfHourFee,
-			High:   fees.FastestFee,
+			Count:    stats.Count,
+			VSize:    stats.VSize,
+			TotalFee: stats.TotalFee,
 		}
 
 		cache.Set(c, cacheKey, resp, cache.TTLBitcoinFees)
 
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			log.Printf("[http] failed to encode bitcoin fees response: %v", err)
+			log.Printf("[http] failed to encode mempool response: %v", err)
 		}
 	}
 }

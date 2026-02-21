@@ -1,4 +1,4 @@
-package httpx
+package protocols
 
 import (
 	"encoding/json"
@@ -9,11 +9,15 @@ import (
 	"crypto-api/internal/cache"
 )
 
-func TestChainsHandler_OK(t *testing.T) {
+func TestProtocolsHandler_OK(t *testing.T) {
 	c := cache.NewMemoryCache()
-	handler := ChainsHandler(c)
+	handler := ProtocolsHandler(c)
 
-	req := httptest.NewRequest(http.MethodGet, "/chains", nil)
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/protocols?chain=Ethereum",
+		nil,
+	)
 	rr := httptest.NewRecorder()
 
 	handler(rr, req)

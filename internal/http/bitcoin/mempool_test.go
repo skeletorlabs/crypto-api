@@ -1,4 +1,4 @@
-package httpx
+package bitcoin
 
 import (
 	"crypto-api/internal/cache"
@@ -13,7 +13,7 @@ func TestBitcoinMempoolHandler_Cache(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/bitcoin/mempool", nil)
 	rr := httptest.NewRecorder()
 
-	handler := GetBitcoinMempoolHandler(c)
+	handler := BitcoinMempoolHandler(c)
 	handler(rr, req)
 
 	if rr.Code != http.StatusOK {

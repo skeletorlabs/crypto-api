@@ -1,11 +1,10 @@
-package httpx
+package http
 
 import (
+	"crypto-api/internal/models"
 	"encoding/json"
 	"log"
 	"net/http"
-
-	"crypto-api/internal/models"
 )
 
 func JSONError(w http.ResponseWriter, status int, message string) {

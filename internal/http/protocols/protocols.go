@@ -1,15 +1,15 @@
-package httpx
+package protocols
 
 import (
+	"crypto-api/internal/cache"
+	"crypto-api/internal/filters"
+	api "crypto-api/internal/http"
+	"crypto-api/internal/models"
+	"crypto-api/internal/sources/market"
 	"encoding/json"
 	"log"
 	"net/http"
 	"time"
-
-	"crypto-api/internal/cache"
-	"crypto-api/internal/filters"
-	"crypto-api/internal/models"
-	"crypto-api/internal/sources/market"
 )
 
 func ProtocolsHandler(c *cache.MemoryCache) http.HandlerFunc {
@@ -29,8 +29,8 @@ func ProtocolsHandler(c *cache.MemoryCache) http.HandlerFunc {
 			ctx := r.Context()
 			data, err := market.GetProtocols(ctx)
 			if err != nil {
-				httpErr := MapError(err)
-				JSONError(w, httpErr.Status, httpErr.Message)
+				httpErr := api.MapError(err)
+				api.JSONError(w, httpErr.Status, httpErr.Message)
 				return
 			}
 

@@ -1,9 +1,10 @@
-package httpx
+package bitcoin
 
 import (
 	"crypto-api/internal/cache"
 	"crypto-api/internal/engine/bitcoin/halving"
 	"crypto-api/internal/engine/bitcoin/valuation"
+	api "crypto-api/internal/http"
 	"crypto-api/internal/models"
 	"crypto-api/internal/storage/repositories"
 	"encoding/json"
@@ -30,7 +31,7 @@ func BitcoinNetworkHandler(c *cache.MemoryCache, repo *repositories.NetworkRepos
 		// 2. Database fallback
 		data, err := repo.GetLatest(r.Context())
 		if err != nil {
-			JSONError(w, http.StatusServiceUnavailable, "Network data currently unavailable")
+			api.JSONError(w, http.StatusServiceUnavailable, "Network data currently unavailable")
 			return
 		}
 

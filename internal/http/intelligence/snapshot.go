@@ -1,4 +1,4 @@
-package httpx
+package intelligence
 
 import (
 	"crypto-api/internal/cache"
@@ -9,8 +9,8 @@ import (
 	"net/http"
 )
 
-// IntelligenceHandler delivers the latest persisted intelligence snapshot.
-func IntelligenceHandler(c *cache.MemoryCache, repo *repositories.IntelligenceRepository) http.HandlerFunc {
+// IntelligenceSnapshotHandler delivers the latest persisted intelligence snapshot.
+func IntelligenceSnapshotHandler(c *cache.MemoryCache, repo *repositories.IntelligenceRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
